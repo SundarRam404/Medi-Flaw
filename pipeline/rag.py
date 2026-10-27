@@ -227,7 +227,7 @@ def retrieve(q: str, k: int = 12) -> list[dict]:
     meds = [d for d in c["docs"] if d["kind"] == "medicine"]
     for tok in set(re.findall(r"[a-z]{5,}", ql)):
         best = max(meds, key=lambda d: fuzz.ratio(tok, d["ref"]), default=None)
-        if best and fuzz.ratio(tok, best["ref"]) >= 85:
+        if best and fuzz.ratio(tok, best["ref"]) >= 80:
             found.insert(0, best["id"])
     for d in c["docs"]:
         if d["kind"] == "type" and d["ref"].split()[0].lower() in ql:
