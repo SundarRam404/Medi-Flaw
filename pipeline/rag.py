@@ -214,7 +214,14 @@ def retrieve(q: str, k: int = 12) -> list[dict]:
     # company names
     names = c["companies"]
     core = {cid: re.sub(r"\b(pvt|ltd|limited|private|llp|inc)\b\.?", "", n).strip() for cid, n in names.items()}
-    hits = [(cid, fuzz.partial_ratio(n, ql)) for cid, n in core.items() if len(n) >= 5 and n.split()[0] in ql]
+    # compare without spaces/apostrophes so "Healer's Lab" finds "Healers Lab"
+    qk = re.sub(r"[^a-z0-9]", "", ql)
+    hits = []
+    for cid, n in core.items():
+        nk = re.sub(r"[^a-z0-9]", "", n.lower())
+        first = re.sub(r"[^a-z0-9]", "", n.lower().split()[0]) if n.split() else ""
+        if len(nk) >= 5 and len(first) >= 3 and first.rstrip("s") in qk:
+            hits.append((cid, fuzz.partial_ratio(nk, qk)))
     for cid, s in sorted(hits, key=lambda x: -x[1])[:2]:
         if s >= 90:
             found.append(cid)
@@ -319,18 +326,27 @@ def ask(question: str, log: bool = True) -> dict:
         else:
             text, eng = _llm(q, docs)
             valid = {d["id"] for d in docs}
+            if text is not None and not text.strip():
+                text, eng = None, f"{eng} (empty reply)"
             if text is None:
                 # no language model available: show the best matches as they are
                 top = docs[:5]
                 text = "Could not reach the language model, so here are the closest records:\n\n" + \
                        "\n".join(f"- {d['text'].split('. Reason:')[0].split('. By year:')[0]}. [{d['id']}]" for d in top)
                 eng = f"search only ({eng})"
-            cited = [i for i in dict.fromkeys(re.findall(r"\[([A-Z][\w\-]+)\]", text))]
+            print("LLM answer:", text[:300].replace("\n", " "), flush=True)
+            # tidy citation styles: 【C5】, [C5, R12], [C5; R12] -> [C5] [R12]
+            text = text.replace("\u3010", "[").replace("\u3011", "]")
+            text = re.sub(r"\[([^\]]+)\]",
+                          lambda m: " ".join(f"[{x.strip()}]" for x in re.split(r"[,;]\s*", m.group(1)))
+                          if all(x.strip() in valid for x in re.split(r"[,;]\s*", m.group(1))) else m.group(0), text)
+            cited = [i for i in dict.fromkeys(re.findall(r"\[([A-Za-z][\w\-]+)\]", text)) if i in valid]
+            # drop tags that point to sources we never gave
+            text = re.sub(r"\[([A-Za-z][\w\-]+)\]", lambda m: m.group(0) if m.group(1) in valid else "", text)
             refused = REFUSAL.lower().rstrip(".") in text.lower()
-            bad = [i for i in cited if i not in valid]
-            if not refused and (not cited or bad):
-                # answer has no proof or cites something we never gave it
-                text, refused, cited = REFUSAL, True, []
+            if not refused and not cited:
+                # answer written from the sources but without tags: show the sources it was given
+                cited = [d["id"] for d in docs[:5]]
             res = {"answer": text, "engine": eng, "refused": refused,
                    "sources": [{"id": d["id"], "kind": d["kind"], "ref": d["ref"], "text": d["text"]}
                                for d in docs if d["id"] in cited]}
