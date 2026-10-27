@@ -1,0 +1,541 @@
+{
+ "name": "PharmaAudit monthly run",
+ "nodes": [
+  {
+   "parameters": {
+    "rule": {
+     "interval": [
+      {
+       "field": "cronExpression",
+       "expression": "0 6 1 * *"
+      }
+     ]
+    }
+   },
+   "id": "432f8006-d012-487b-be65-b875f78d23c4",
+   "name": "Every month (1st, 6 AM)",
+   "type": "n8n-nodes-base.scheduleTrigger",
+   "typeVersion": 1.2,
+   "position": [
+    0,
+    0
+   ]
+  },
+  {
+   "parameters": {
+    "httpMethod": "POST",
+    "path": "pharmaaudit-run",
+    "responseMode": "onReceived",
+    "options": {}
+   },
+   "id": "072e8cdd-6c6a-493f-a8c3-d814a69fadce",
+   "name": "Run now (from website)",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    220
+   ],
+   "webhookId": "c5d737d4-05f5-44ba-a30e-5a42aa2cca48"
+  },
+  {
+   "parameters": {
+    "assignments": {
+     "assignments": [
+      {
+       "id": "39005aad-ddbd-43dc-a168-07aedae45c52",
+       "name": "api",
+       "value": "http://localhost:8000",
+       "type": "string"
+      },
+      {
+       "id": "9b2c26ad-13ca-4e1a-9f71-78af069a15c0",
+       "name": "key",
+       "value": "pharmaaudit-pipeline-key",
+       "type": "string"
+      }
+     ]
+    },
+    "options": {}
+   },
+   "id": "ba83b270-1d91-4e0f-bde2-519911fbad02",
+   "name": "Settings",
+   "type": "n8n-nodes-base.set",
+   "typeVersion": 3.4,
+   "position": [
+    240,
+    110
+   ]
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Settings').item.json.api }}/api/pipeline/start",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Pipeline-Key",
+       "value": "={{ $('Settings').item.json.key }}"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "{\"trigger\": \"n8n\"}",
+    "options": {
+     "timeout": 900000
+    }
+   },
+   "id": "52b91108-24f1-40c1-a055-a39a8c24951e",
+   "name": "Start run",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    480,
+    110
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 5000,
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Settings').item.json.api }}/api/pipeline/step/fetch",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Pipeline-Key",
+       "value": "={{ $('Settings').item.json.key }}"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ run_id: $('Start run').item.json.run_id }) }}",
+    "options": {
+     "timeout": 900000
+    }
+   },
+   "id": "df6d8b22-2275-4355-aae0-57a4892cb73b",
+   "name": "Fetch new CDSCO data",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    720,
+    110
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 5000,
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Settings').item.json.api }}/api/pipeline/step/clean",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Pipeline-Key",
+       "value": "={{ $('Settings').item.json.key }}"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ run_id: $('Start run').item.json.run_id }) }}",
+    "options": {
+     "timeout": 900000
+    }
+   },
+   "id": "d73ec4b7-6033-4c7b-acdb-76548989fe2d",
+   "name": "Clean data",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    960,
+    110
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 5000,
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Settings').item.json.api }}/api/pipeline/step/score",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Pipeline-Key",
+       "value": "={{ $('Settings').item.json.key }}"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ run_id: $('Start run').item.json.run_id }) }}",
+    "options": {
+     "timeout": 900000
+    }
+   },
+   "id": "af80e95d-7a18-43c3-991d-272625769ac3",
+   "name": "Update risk scores",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1200,
+    110
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 5000,
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Settings').item.json.api }}/api/pipeline/step/index",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Pipeline-Key",
+       "value": "={{ $('Settings').item.json.key }}"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ run_id: $('Start run').item.json.run_id }) }}",
+    "options": {
+     "timeout": 900000
+    }
+   },
+   "id": "d50a9a46-c3a1-4906-bf5b-e0e729dac5bf",
+   "name": "Update search index",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1440,
+    110
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 5000,
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Settings').item.json.api }}/api/pipeline/step/alerts",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Pipeline-Key",
+       "value": "={{ $('Settings').item.json.key }}"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ run_id: $('Start run').item.json.run_id }) }}",
+    "options": {
+     "timeout": 900000
+    }
+   },
+   "id": "df67c7b0-8755-40fa-9d4f-bd08e30208d1",
+   "name": "Match watchlists and email",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1680,
+    110
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 5000,
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Settings').item.json.api }}/api/pipeline/step/followups",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Pipeline-Key",
+       "value": "={{ $('Settings').item.json.key }}"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ run_id: $('Start run').item.json.run_id }) }}",
+    "options": {
+     "timeout": 900000
+    }
+   },
+   "id": "5f3af8f4-5c6b-4649-be68-59cf9458f26d",
+   "name": "Send reminders",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1920,
+    110
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 5000,
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Settings').item.json.api }}/api/pipeline/finish",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Pipeline-Key",
+       "value": "={{ $('Settings').item.json.key }}"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ run_id: $('Start run').item.json.run_id }) }}",
+    "options": {
+     "timeout": 900000
+    }
+   },
+   "id": "b1382ae3-839a-41a7-b464-8bec05e1df49",
+   "name": "Finish run",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    2160,
+    110
+   ],
+   "retryOnFail": true,
+   "maxTries": 3,
+   "waitBetweenTries": 5000,
+   "onError": "continueErrorOutput"
+  },
+  {
+   "parameters": {
+    "method": "POST",
+    "url": "={{ $('Settings').item.json.api }}/api/pipeline/fail",
+    "sendHeaders": true,
+    "headerParameters": {
+     "parameters": [
+      {
+       "name": "X-Pipeline-Key",
+       "value": "={{ $('Settings').item.json.key }}"
+      }
+     ]
+    },
+    "sendBody": true,
+    "specifyBody": "json",
+    "jsonBody": "={{ JSON.stringify({ run_id: $('Start run').isExecuted ? $('Start run').item.json.run_id : null, error: 'n8n step failed: ' + ($json.error && $json.error.message ? $json.error.message : JSON.stringify($json).slice(0,300)) }) }}",
+    "options": {}
+   },
+   "id": "53810650-1933-4ba5-8530-6958caa01db8",
+   "name": "Mark run failed",
+   "type": "n8n-nodes-base.httpRequest",
+   "typeVersion": 4.2,
+   "position": [
+    1440,
+    380
+   ]
+  }
+ ],
+ "connections": {
+  "Every month (1st, 6 AM)": {
+   "main": [
+    [
+     {
+      "node": "Settings",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Run now (from website)": {
+   "main": [
+    [
+     {
+      "node": "Settings",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Settings": {
+   "main": [
+    [
+     {
+      "node": "Start run",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Start run": {
+   "main": [
+    [
+     {
+      "node": "Fetch new CDSCO data",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Mark run failed",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Fetch new CDSCO data": {
+   "main": [
+    [
+     {
+      "node": "Clean data",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Mark run failed",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Clean data": {
+   "main": [
+    [
+     {
+      "node": "Update risk scores",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Mark run failed",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Update risk scores": {
+   "main": [
+    [
+     {
+      "node": "Update search index",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Mark run failed",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Update search index": {
+   "main": [
+    [
+     {
+      "node": "Match watchlists and email",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Mark run failed",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Match watchlists and email": {
+   "main": [
+    [
+     {
+      "node": "Send reminders",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Mark run failed",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Send reminders": {
+   "main": [
+    [
+     {
+      "node": "Finish run",
+      "type": "main",
+      "index": 0
+     }
+    ],
+    [
+     {
+      "node": "Mark run failed",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Finish run": {
+   "main": [
+    [],
+    [
+     {
+      "node": "Mark run failed",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "active": false,
+ "settings": {
+  "executionOrder": "v1",
+  "timezone": "Asia/Kolkata"
+ },
+ "pinData": {}
+}

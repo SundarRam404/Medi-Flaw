@@ -1,0 +1,19 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+sqlalchemy>=2.0.30
+psycopg[binary]>=3.1
+pandas>=2.1
+numpy>=1.26
+scipy==1.14.1  # newer scipy wheels crash on recent macOS with Python 3.10
+rapidfuzz>=3.6
+scikit-learn>=1.4
+xgboost>=2.0
+pyjwt>=2.8
+bcrypt>=4.1
+python-multipart>=0.0.9
+requests>=2.31
+httpx>=0.27
+chromadb>=0.5
+python-dotenv>=1.0
+email-validator>=2.1
+pypdf>=4.0

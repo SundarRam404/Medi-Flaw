@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+data/chroma/
+data/search_docs.json
+data/search_engine.txt
+data/incoming/*.done
+frontend/node_modules/
+frontend/.next/
+frontend/.env.local
+models/*.json
+eval/results.json
+logs/

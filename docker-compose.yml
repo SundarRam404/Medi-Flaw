@@ -1,0 +1,23 @@
+# Optional. Runs everything with one command:  docker compose up --build
+# Uses DATABASE_URL etc. from .env (Neon). For n8n inside Docker, set the
+# workflow's Settings node "api" to http://backend:8000
+services:
+  backend:
+    build: { context: ., dockerfile: Dockerfile.backend }
+    env_file: .env
+    environment:
+      - RUN_NOW_WEBHOOK_URL=http://n8n:5678/webhook/pharmaaudit-run
+    ports: ["8000:8000"]
+  frontend:
+    build: { context: ./frontend, args: { NEXT_PUBLIC_API_URL: "http://localhost:8000" } }
+    ports: ["3000:3000"]
+    depends_on: [backend]
+  n8n:
+    image: n8nio/n8n:latest
+    ports: ["5678:5678"]
+    environment:
+      - GENERIC_TIMEZONE=Asia/Kolkata
+      - TZ=Asia/Kolkata
+    volumes: ["n8n_data:/home/node/.n8n"]
+volumes:
+  n8n_data:
