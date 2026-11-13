@@ -1,4 +1,4 @@
-"""PharmaAudit API.   Run:  uvicorn backend.main:app --reload --port 8000
+"""Medi-Flaw API.   Run:  uvicorn backend.main:app --reload --port 8000
 Docs at http://localhost:8000/docs
 """
 import csv, io, re, threading, time
@@ -15,7 +15,7 @@ from pipeline import run as pipeline
 from pipeline import rag
 from pipeline.findings import findings
 
-app = FastAPI(title="PharmaAudit API", version="1.0")
+app = FastAPI(title="Medi-Flaw API", version="1.0")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 

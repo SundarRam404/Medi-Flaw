@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Header from "@/components/Header";
 
 export const metadata: Metadata = {
-  title: "PharmaAudit - Check failed medicine batches",
+  title: "Medi-Flaw - Check failed medicine batches",
   description: "Search medicine batches that failed CDSCO quality tests.",
 };
 

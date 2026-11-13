@@ -1,5 +1,5 @@
 {
-  "name": "PharmaAudit daily check",
+  "name": "Medi-Flaw daily check",
   "nodes": [
     {
       "parameters": {

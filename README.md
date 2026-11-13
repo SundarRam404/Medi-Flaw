@@ -1,4 +1,4 @@
-# PharmaAudit
+# Medi-Flaw
 
 Searchable record of medicine batches that failed CDSCO quality tests (Not of Standard Quality),
 with company risk scores, question answering over the records, watchlist email alerts,

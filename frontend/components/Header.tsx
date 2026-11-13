@@ -35,8 +35,8 @@ export default function Header() {
   return (
     <header className="border-b border-line bg-white">
       <nav className="mx-auto flex max-w-6xl items-stretch overflow-x-auto px-2">
-        <Link href="/" className="mr-4 flex shrink-0 items-center py-2 hover:no-underline" aria-label="PharmaAudit home">
-          <img src="/logo.png" alt="PharmaAudit" className="h-7 w-auto" />
+        <Link href="/" className="mr-4 flex shrink-0 items-center py-2 hover:no-underline" aria-label="Medi-Flaw home">
+          <img src="/logo.png" alt="Medi-Flaw" className="h-7 w-auto" />
         </Link>
         {links.map(([h, l]) => (
           <Link key={h} href={h} className={tab(on(h))}>{l}</Link>
