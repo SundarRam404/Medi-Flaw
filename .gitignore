@@ -12,3 +12,4 @@ frontend/.env.local
 models/*.json
 eval/results.json
 logs/
+.DS_Store
