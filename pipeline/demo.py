@@ -1,6 +1,6 @@
 """Demo pharmacy account with 6 months of purchases.
 
-Login: pharmacy@pharmaaudit.in / Pharmacy@123
+Only used when SEED_DEMO=1. Login comes from DEMO_EMAIL / DEMO_PASSWORD.
 Some batches are already in CDSCO failed lists, two more fail when the held-back
 July 2026 list is loaded by the monthly run.
 """
@@ -9,10 +9,7 @@ from datetime import date
 import pandas as pd
 from sqlalchemy import select, text
 from .db import SessionLocal, engine, User, WatchItem
-from .config import INCOMING_DIR
-
-DEMO_EMAIL = "pharmacy@pharmaaudit.in"
-DEMO_PASSWORD = "Pharmacy@123"
+from .config import INCOMING_DIR, DEMO_EMAIL, DEMO_PASSWORD, SEED_DEMO
 
 SAFE = [
     ("Paracetamol Tablets IP 650 mg", "Micro Labs Ltd"), ("Paracetamol Tablets IP 500 mg", "GSK Pharmaceuticals Ltd"),
@@ -55,6 +52,8 @@ def _held_back_rows():
 
 
 def seed_demo_pharmacy(hash_pw) -> bool:
+    if not SEED_DEMO:
+        return False
     rng = random.Random(42)
     with SessionLocal() as s:
         if s.scalar(select(User).where(User.email == DEMO_EMAIL)):
@@ -114,6 +113,8 @@ def seed_demo_pharmacy(hash_pw) -> bool:
 
 def reset_demo_pharmacy(hash_pw):
     """Delete and rebuild the demo pharmacy account."""
+    if not SEED_DEMO:
+        raise RuntimeError("Demo data is disabled. Set SEED_DEMO=1 with DEMO_EMAIL and DEMO_PASSWORD.")
     with SessionLocal() as s:
         u = s.scalar(select(User).where(User.email == DEMO_EMAIL))
         if u:

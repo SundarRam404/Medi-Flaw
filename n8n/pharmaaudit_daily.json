@@ -51,7 +51,7 @@
             {
               "id": "9b2c26ad-13ca-4e1a-9f71-78af069a15c0",
               "name": "key",
-              "value": "pharmaaudit-pipeline-key",
+              "value": "PASTE_PIPELINE_KEY_HERE",
               "type": "string"
             }
           ]

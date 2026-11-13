@@ -66,12 +66,26 @@ npx n8n
 4. Click **Active** (top right). It now runs on the 1st of every month at 6 AM, and the website's
    **Run now** button triggers it through the webhook.
 
-## Logins
+## Configuration and logins
 
-| Role | Email | Password |
+No passwords or keys live in this repository. Everything is read from environment variables
+(`.env` locally, the host's settings in production). The app refuses to start if a required
+value is missing or too short, so it can never go live on a placeholder.
+
+| Variable | Required | Notes |
 |---|---|---|
-| Admin | admin@pharmaaudit.in | admin123 |
-| Demo pharmacy | demo@pharmaaudit.in | demo123 |
+| `DATABASE_URL` | yes | PostgreSQL connection string |
+| `SECRET_KEY` | yes | 32+ characters, signs login tokens |
+| `PIPELINE_KEY` | yes | 32+ characters, protects the pipeline endpoints n8n calls |
+| `ADMIN_EMAIL` | yes | admin login |
+| `ADMIN_PASSWORD` | yes | 12+ characters. Change it and restart to rotate. |
+| `GROQ_API_KEY` | for AI answers | |
+| `SMTP_USER`, `SMTP_PASSWORD` | for email alerts | Gmail app password, not the account password |
+| `SEED_DEMO` | no | `1` creates a demo pharmacy for presentations. Keep `0` in production. |
+| `DEMO_EMAIL`, `DEMO_PASSWORD` | only if `SEED_DEMO=1` | |
+
+The n8n workflow files contain `PASTE_PIPELINE_KEY_HERE`. After importing them into n8n,
+replace it with your real `PIPELINE_KEY`.
 
 ## Demo order (for the evaluation)
 

@@ -146,7 +146,6 @@ export default function MyMedicines() {
       <h1 className="text-2xl font-semibold">My medicines</h1>
       <p className="mt-1 text-muted">Keep a list of the batches you buy. Every new CDSCO list is checked against it, and you are told if any batch fails.</p>
       <Link href="/login?next=/watchlist" className="btn mt-4">Log in or create an account</Link>
-      <p className="mt-3 text-sm text-muted">Demo shop: pharmacy@pharmaaudit.in / Pharmacy@123</p>
     </div>
   );
 

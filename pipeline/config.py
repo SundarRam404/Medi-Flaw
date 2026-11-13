@@ -6,21 +6,37 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / ".env")
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/pharmaaudit")
+def _require(name: str, min_len: int = 1) -> str:
+    """Read a required setting. Refuses to start with a missing or too-short value,
+    so a server can never go live on a placeholder secret."""
+    v = os.getenv(name, "").strip()
+    if not v:
+        raise RuntimeError(f"{name} is not set. Add it to .env (local) or the host's environment variables.")
+    if len(v) < min_len:
+        raise RuntimeError(f"{name} is too short (need at least {min_len} characters).")
+    return v
+
+
+DATABASE_URL = _require("DATABASE_URL")
 # Neon gives "postgres://" links sometimes; SQLAlchemy wants "postgresql://"
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = "postgresql://" + DATABASE_URL[len("postgres://"):]
 if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = "postgresql+psycopg://" + DATABASE_URL[len("postgresql://"):]
 
-SECRET_KEY = os.getenv("SECRET_KEY", "change-this-secret")
-PIPELINE_KEY = os.getenv("PIPELINE_KEY", "pharmaaudit-pipeline-key")
+SECRET_KEY = _require("SECRET_KEY", 32)
+PIPELINE_KEY = _require("PIPELINE_KEY", 32)
 APP_URL = os.getenv("APP_URL", "http://localhost:3000")
 
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@pharmaaudit.in")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
-DEMO_EMAIL = os.getenv("DEMO_EMAIL", "demo@pharmaaudit.in")
-DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "demo123")
+ADMIN_EMAIL = _require("ADMIN_EMAIL").lower()
+ADMIN_PASSWORD = _require("ADMIN_PASSWORD", 12)
+
+# Demo accounts are for local presentations only. Off unless SEED_DEMO=1.
+SEED_DEMO = os.getenv("SEED_DEMO", "0") == "1"
+DEMO_EMAIL = os.getenv("DEMO_EMAIL", "").strip().lower()
+DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "").strip()
+if SEED_DEMO and not (DEMO_EMAIL and len(DEMO_PASSWORD) >= 12):
+    raise RuntimeError("SEED_DEMO=1 needs DEMO_EMAIL and a DEMO_PASSWORD of at least 12 characters.")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile,openai/gpt-oss-120b")
@@ -35,7 +51,7 @@ SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-MAIL_FROM = os.getenv("MAIL_FROM", SMTP_USER or "alerts@pharmaaudit.in")
+MAIL_FROM = os.getenv("MAIL_FROM", SMTP_USER)
 FOLLOWUP_DAYS = int(os.getenv("FOLLOWUP_DAYS", "3"))
 
 N8N_WEBHOOK_URL = os.getenv("RUN_NOW_WEBHOOK_URL", "")

@@ -4,7 +4,7 @@
   python3 -m pipeline.run --monthly      one full monthly run (what n8n triggers)
   python3 -m pipeline.run --step fetch   a single step
 """
-import argparse, json, re, traceback
+import argparse, json, re, secrets, traceback
 from datetime import datetime, date
 import bcrypt
 import pandas as pd
@@ -12,7 +12,10 @@ from sqlalchemy import select
 from sqlalchemy.orm.attributes import flag_modified
 from .db import utcnow, SessionLocal, init_db, PipelineRun, User, WatchItem
 from . import fetch, clean, model, rag, alerts
-from .config import ADMIN_EMAIL, ADMIN_PASSWORD, DEMO_EMAIL, DEMO_PASSWORD, INCOMING_DIR
+from .config import ADMIN_EMAIL, ADMIN_PASSWORD, DEMO_EMAIL, DEMO_PASSWORD, SEED_DEMO, INCOMING_DIR
+
+# Default logins from early development. Locked on every startup so they can never be used.
+LEGACY_ACCOUNTS = ("admin@pharmaaudit.in", "demo@pharmaaudit.in", "pharmacy@pharmaaudit.in")
 
 STEPS = ["fetch", "clean", "score", "index", "alerts", "followups"]
 
@@ -86,10 +89,29 @@ def run_all(trigger: str = "manual", run_id: int | None = None) -> int:
 
 # ------------------------------------------------------------------ first-time setup
 def seed_users():
+    """Admin account comes from environment variables, which are the source of truth:
+    changing ADMIN_PASSWORD and restarting updates it. Old default accounts are locked.
+    Demo accounts are only created when SEED_DEMO=1."""
     with SessionLocal() as s:
-        if not s.scalar(select(User).where(User.email == ADMIN_EMAIL)):
-            s.add(User(email=ADMIN_EMAIL, name="Admin", organisation="PharmaAudit", role="admin",
+        admin = s.scalar(select(User).where(User.email == ADMIN_EMAIL))
+        if not admin:
+            s.add(User(email=ADMIN_EMAIL, name="Admin", organisation="Medi-Flaw", role="admin",
                        password_hash=hash_pw(ADMIN_PASSWORD)))
+        else:
+            admin.role = "admin"
+            if not bcrypt.checkpw(ADMIN_PASSWORD.encode(), admin.password_hash.encode()):
+                admin.password_hash = hash_pw(ADMIN_PASSWORD)
+
+        keep = {ADMIN_EMAIL} | ({DEMO_EMAIL} if SEED_DEMO else set())
+        for email in LEGACY_ACCOUNTS:
+            old = None if email in keep else s.scalar(select(User).where(User.email == email))
+            if old:
+                old.role = "pharmacist"
+                old.password_hash = hash_pw(secrets.token_urlsafe(32))  # random, never shown: account is dead
+
+        if not SEED_DEMO:
+            s.commit()
+            return
         demo = s.scalar(select(User).where(User.email == DEMO_EMAIL))
         if not demo:
             demo = User(email=DEMO_EMAIL, name="Demo Pharmacy", organisation="Sri Ram Medicals, Chennai",
@@ -160,7 +182,7 @@ if __name__ == "__main__":
         from .demo import reset_demo_pharmacy
         reset_demo_pharmacy(hash_pw)
         alerts.run(None, None)
-        print("Demo pharmacy rebuilt: pharmacy@pharmaaudit.in / Pharmacy@123")
+        print(f"Demo pharmacy rebuilt for {DEMO_EMAIL}")
     elif a.monthly:
         rid = run_all("schedule")
         with SessionLocal() as s:
