@@ -4,7 +4,8 @@ Docs at http://localhost:8000/docs
 import csv, io, re, threading, time
 from datetime import datetime, timedelta, date
 import bcrypt, httpx, jwt
-from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File, Form, Query, BackgroundTasks
+from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File, Form, Query, BackgroundTasks, Request
+from collections import defaultdict, deque
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select, func, or_, desc, text
@@ -55,6 +56,51 @@ def co_json(c: Company) -> dict:
             "risk_band": c.risk_band, "risk_reasons": c.risk_reasons or [],
             "first_month": c.first_month.isoformat() if c.first_month else None,
             "last_month": c.last_month.isoformat() if c.last_month else None}
+
+
+# ------------------------------------------------------------------ simple rate limits (one server, in memory)
+_hits: dict[str, deque] = defaultdict(deque)
+_hits_lock = threading.Lock()
+
+
+def client_ip(request: Request) -> str:
+    fwd = request.headers.get("x-forwarded-for", "")
+    return (fwd.split(",")[0].strip() if fwd else (request.client.host if request.client else "?"))
+
+
+def limit(key: str, n: int, seconds: int, msg: str = "Too many requests. Please wait a minute and try again."):
+    """Allow at most n hits per key in the last `seconds`."""
+    now = time.time()
+    with _hits_lock:
+        q = _hits[key]
+        while q and q[0] < now - seconds:
+            q.popleft()
+        if len(q) >= n:
+            raise HTTPException(429, msg)
+        q.append(now)
+        if len(_hits) > 50000:  # keep memory bounded
+            for k in [k for k, v in _hits.items() if not v or v[-1] < now - 86400]:
+                del _hits[k]
+
+
+def fail_count(email: str) -> int:
+    now = time.time()
+    with _hits_lock:
+        q = _hits["fail:" + email]
+        while q and q[0] < now - 900:
+            q.popleft()
+        return len(q)
+
+
+def note_fail(email: str):
+    with _hits_lock:
+        _hits["fail:" + email].append(time.time())
+
+
+LOCKED = "Too many wrong passwords. Wait 15 minutes, or log in with an email code instead."
+
+
+MAX_UPLOAD = 5 * 1024 * 1024  # 5 MB is plenty for an invoice or a stock list
 
 
 # ------------------------------------------------------------------ auth
@@ -109,10 +155,13 @@ def make_token(u: User) -> str:
 def current_user(authorization: str = Header(default="")) -> User:
     try:
         data = jwt.decode(authorization.replace("Bearer ", ""), SECRET_KEY, algorithms=["HS256"])
+        uid = int(data["sub"])
+        if data.get("purpose"):
+            raise ValueError("not a login token")
     except Exception:
         raise HTTPException(401, "Please log in")
     with SessionLocal() as s:
-        u = s.get(User, int(data["sub"]))
+        u = s.get(User, uid)
     if not u:
         raise HTTPException(401, "Please log in")
     return u
@@ -167,7 +216,8 @@ def _code_hash(email: str, code: str) -> str:
 
 
 @app.post("/api/auth/register")
-def register(body: Register):
+def register(body: Register, request: Request):
+    limit("codes-ip:" + client_ip(request), 15, 3600, "Too many codes asked from this connection. Try again later.")
     """Step 1 of sign-up: check the details and email a 6-digit code. No account is made yet."""
     import secrets
     from pipeline.alerts import send_email
@@ -245,10 +295,15 @@ def verify_code(body: VerifyIn):
 
 
 @app.post("/api/auth/login")
-def login(body: Login):
+def login(body: Login, request: Request):
+    limit("login-ip:" + client_ip(request), 30, 600)
+    email = body.email.lower()
+    if fail_count(email) >= 5:
+        raise HTTPException(429, LOCKED)
     with SessionLocal() as s:
-        u = s.scalar(select(User).where(User.email == body.email.lower()))
+        u = s.scalar(select(User).where(User.email == email))
     if not u or not bcrypt.checkpw(body.password.encode(), u.password_hash.encode()):
+        note_fail(email)
         if u:
             log_event(u.id, "login_failed", "password")
         if u and (u.auth_provider or "") == "google":
@@ -308,7 +363,10 @@ def _use_code(email: str, purpose: str, code: str) -> None:
 def _check_password(u: User, password: str) -> None:
     if (u.auth_provider or "") == "google":
         raise HTTPException(400, "You have not set a password yet. Use the email code, or Forgot password.")
+    if fail_count(u.email) >= 5:
+        raise HTTPException(429, LOCKED)
     if not bcrypt.checkpw((password or "").encode(), u.password_hash.encode()):
+        note_fail(u.email)
         log_event(u.id, "login_failed", "password")
         raise HTTPException(401, "Wrong password")
 
@@ -324,7 +382,8 @@ class CodeIn(BaseModel):
 
 
 @app.post("/api/auth/login/start")
-def login_start(body: EmailOnly):
+def login_start(body: EmailOnly, request: Request):
+    limit("codes-ip:" + client_ip(request), 15, 3600, "Too many codes asked from this connection. Try again later.")
     """Emails a login code. Says clearly when there is no account, so nobody waits for a code that never comes."""
     email = body.email.lower().strip()
     with SessionLocal() as s:
@@ -438,7 +497,8 @@ class ResetFinish(BaseModel):
 
 
 @app.post("/api/auth/reset/start")
-def reset_start(body: ResetStart):
+def reset_start(body: ResetStart, request: Request):
+    limit("codes-ip:" + client_ip(request), 15, 3600, "Too many codes asked from this connection. Try again later.")
     """Forgot password, or a Google user setting a password: email a 6-digit code.
     Answers the same whether or not the email has an account, so nobody can probe for accounts."""
     import secrets
@@ -625,6 +685,7 @@ def period_start(s, period: str):
 
 @app.get("/api/companies")
 def companies(sort: str = "risk", q: str = "", state: str = "", period: str = "all", page: int = 1, size: int = 50):
+    size, page = max(1, min(size, 100)), max(1, page)
     with SessionLocal() as s:
         start, last = period_start(s, period)
         cnt = (select(Record.company_id.label("cid"), func.count(Record.id).label("n"),
@@ -717,6 +778,7 @@ def data_summary():
 
 @app.get("/api/data/raw")
 def data_raw(page: int = 1, size: int = 25, q: str = ""):
+    size, page = max(1, min(size, 100)), max(1, page)
     with SessionLocal() as s:
         base = select(RawRecord)
         if q:
@@ -731,6 +793,7 @@ def data_raw(page: int = 1, size: int = 25, q: str = ""):
 
 @app.get("/api/data/clean")
 def data_clean(page: int = 1, size: int = 25, q: str = ""):
+    size, page = max(1, min(size, 100)), max(1, page)
     with SessionLocal() as s:
         base = select(Record)
         if q:
@@ -743,6 +806,7 @@ def data_clean(page: int = 1, size: int = 25, q: str = ""):
 
 @app.get("/api/data/changes")
 def data_changes(page: int = 1, size: int = 25, field: str = "", raw_id: int | None = None):
+    size, page = max(1, min(size, 100)), max(1, page)
     with SessionLocal() as s:
         base = select(CleaningLog)
         if field:
@@ -952,7 +1016,9 @@ async def watch_parse(file: UploadFile | None = File(None), text: str = Form("")
     from pipeline.invoice import pdf_text, parse_items
     raw = text
     if file is not None:
-        data = await file.read()
+        data = await file.read(MAX_UPLOAD + 1)
+        if len(data) > MAX_UPLOAD:
+            raise HTTPException(413, "File too big. Please upload a file under 5 MB.")
         name = (file.filename or "").lower()
         if name.endswith(".pdf"):
             raw = pdf_text(data)
@@ -989,7 +1055,10 @@ def watch_patch(wid: int, body: WatchPatch, u: User = Depends(current_user)):
 
 @app.post("/api/watchlist/upload")
 async def watch_upload(file: UploadFile = File(...), u: User = Depends(current_user)):
-    text_ = (await file.read()).decode("utf-8", errors="ignore")
+    raw = await file.read(MAX_UPLOAD + 1)
+    if len(raw) > MAX_UPLOAD:
+        raise HTTPException(413, "File too big. Please upload a file under 5 MB.")
+    text_ = raw.decode("utf-8", errors="ignore")
     rows = []
     for row in csv.DictReader(io.StringIO(text_)):
         row = {k.strip().lower(): (v or "").strip() for k, v in row.items() if k}
@@ -1172,7 +1241,12 @@ class AskIn(BaseModel):
 
 
 @app.post("/api/ask")
-def ask_q(body: AskIn):
+def ask_q(body: AskIn, request: Request):
+    ip = client_ip(request)
+    limit("ask-min:" + ip, 12, 60, "Medi needs a short break. Please ask again in a minute.")
+    limit("ask-day:" + ip, 300, 86400, "Daily question limit reached. Please come back tomorrow.")
+    if len(body.question) > 600:
+        raise HTTPException(400, "Please keep the question under 600 characters")
     if len(body.question.strip()) < 3:
         raise HTTPException(400, "Type a question")
     return rag.ask(body.question)
