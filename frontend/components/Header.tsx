@@ -43,7 +43,7 @@ export default function Header() {
           {links.map(([h, l]) => (
             <Link key={h} href={h} className={tab(on(h))}>{l}</Link>
           ))}
-          <Link href="/watchlist" className="btn ml-2 shrink-0 px-4 py-2 hover:no-underline">My medicines</Link>
+          <Link href="/watchlist" className="btn ml-2 shrink-0 px-4 py-2 hover:no-underline">{!user ? "My medicines" : user.account_type === "personal" ? "My family\u2019s medicines" : "My stock"}</Link>
           {user ? (
             <button className={tab(false)} onClick={() => setAsk(true)} title={user.email}>Log out</button>
           ) : (

@@ -35,7 +35,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       <main className={home ? "w-full flex-1" : "mx-auto w-full max-w-6xl flex-1 px-4 py-10"}>{children}</main>
       <footer className="mt-16 border-t border-line">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-8 text-xs text-muted">
-          <Logo size={18} />
+          <span className="flex items-center gap-2"><Logo size={18} /><span>— Making Medicine Quality Transparent</span></span>
           <span>Data: CDSCO &ldquo;Not of Standard Quality&rdquo; drug alerts, Government of India. Information only, not medical advice.</span>
         </div>
       </footer>

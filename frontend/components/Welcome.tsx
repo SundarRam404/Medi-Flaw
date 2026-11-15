@@ -117,6 +117,7 @@ export default function Welcome() {
       <img src="/landscape.svg" alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
       <div className="relative w-full max-w-[400px] rounded-3xl border border-white/70 bg-white/85 p-6 shadow-soft backdrop-blur-xl sm:p-7">
         <Logo size={22} />
+        <p className="mt-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-brand">Making Medicine Quality Transparent</p>
         {pending ? (
           <>
             <h1 className="h-display mt-5 text-[34px]">Check your email</h1>

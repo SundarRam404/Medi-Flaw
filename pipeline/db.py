@@ -99,6 +99,7 @@ class User(Base):
     role: Mapped[str] = mapped_column(String(20), default="pharmacist")  # pharmacist / admin
     account_type: Mapped[str | None] = mapped_column(String(20), default="business")  # business / personal
     auth_provider: Mapped[str | None] = mapped_column(String(20), default="password")  # password / google
+    extra_emails: Mapped[list | None] = mapped_column(JSON, default=list)  # staff who also get alerts (business)
     password_hash: Mapped[str] = mapped_column(String(200))
     email_alerts: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
@@ -133,6 +134,7 @@ class WatchItem(Base):
     status: Mapped[str] = mapped_column(String(20), default="in_stock")  # in_stock / returned
     note: Mapped[str | None] = mapped_column(String(300))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    taken_by: Mapped[str | None] = mapped_column(String(80))  # personal: who takes it (Amma, Appa...)
 
 
 class Alert(Base):
@@ -202,6 +204,8 @@ def init_db():
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS email_alerts boolean DEFAULT true",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS account_type varchar(20) DEFAULT 'business'",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider varchar(20) DEFAULT 'password'",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS extra_emails json",
+            "ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS taken_by varchar(80)",
             "ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS manufacturer varchar(300)",
             "ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS quantity integer",
             "ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS purchased_on date",

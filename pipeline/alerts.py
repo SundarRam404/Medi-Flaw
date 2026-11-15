@@ -45,7 +45,9 @@ def send_email(to: str, subject: str, body: str) -> str:
         return "failed"
 
 
-def alert_text(user: User, rec: Record, token: str) -> tuple[str, str]:
+def alert_text(user: User, rec: Record, token: str, taken_by: str | None = None) -> tuple[str, str]:
+    if (user.account_type or "business") == "personal":
+        return personal_text(user, rec, token, taken_by)
     subject = f"Batch {rec.batch_no} on your list failed a CDSCO quality test"
     body = f"""Hello {user.name},
 
@@ -73,6 +75,40 @@ Medi-Flaw
 (This alert is based only on the official CDSCO list. Please check the original list before acting.)
 """
     return subject, body
+
+
+def personal_text(user: User, rec: Record, token: str, taken_by: str | None) -> tuple[str, str]:
+    who = f" ({taken_by})" if taken_by else ""
+    subject = f"A medicine you saved{who} failed a government quality test"
+    body = f"""Hello {user.name},
+
+A medicine on your Medi-Flaw list{who} is in the latest government (CDSCO) list of
+medicines that failed a quality test.
+
+  Medicine      : {rec.drug_name}
+  Batch number  : {rec.batch_no}
+  Made by       : {rec.manufacturer}
+  What failed   : {rec.failure_reason}
+  How serious   : {rec.danger} - {rec.danger_note}
+
+What to do
+  1. Do not stop the medicine suddenly. Call your doctor or pharmacist today and ask
+     for the same medicine from a different batch.
+  2. Take the strip back to the shop. A short note to show them is on this page:
+     {APP_URL}/batch/{rec.batch_norm}
+  3. Tap here to tell us you have seen this (then we will not remind you):
+     {APP_URL}/ack/{token}
+
+Medi-Flaw - Making Medicine Quality Transparent
+(Based only on the official CDSCO list. This is not medical advice.)
+"""
+    return subject, body
+
+
+def staff_emails(user: User) -> list[str]:
+    if (user.account_type or "business") != "business":
+        return []
+    return [e for e in (user.extra_emails or []) if e and e.lower() != (user.email or "").lower()][:3]
 
 
 _run_lock = threading.Lock()
@@ -104,8 +140,11 @@ def _run(run_id=None, record_ids: list[int] | None = None) -> dict:
             matched += 1
             user = s.get(User, w.user_id)
             token = secrets.token_urlsafe(16)
-            subject, body = alert_text(user, rec, token)
+            subject, body = alert_text(user, rec, token, getattr(w, "taken_by", None))
             status = send_email(user.email, subject, body) if user.email_alerts is not False else "off"
+            if user.email_alerts is not False:
+                for extra in staff_emails(user):  # owner/staff copies, best effort
+                    send_email(extra, subject, body)
             sent += status == "sent"
             outbox += status == "outbox"
             failed += status == "failed"
@@ -130,6 +169,9 @@ def followups(run_id=None, days: int | None = None) -> dict:
         for a in due:
             body = f"Reminder: you have not confirmed this alert yet.\n\n{a.body}"
             send_email(a.to_email, "Reminder: " + a.subject, body)
+            u = s.get(User, a.user_id)
+            for extra in staff_emails(u) if u else []:
+                send_email(extra, "Reminder: " + a.subject, body)
             a.followup_at = utcnow()
             n += 1
         s.commit()

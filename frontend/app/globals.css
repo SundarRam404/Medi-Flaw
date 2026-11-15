@@ -36,4 +36,6 @@ a:hover { text-decoration: underline; text-underline-offset: 3px; }
 @media print {
   header, footer, .no-print { display: none !important; }
   body { background: white; }
+  main { padding: 0 !important; max-width: none !important; }
+  @page { margin: 14mm; }
 }

@@ -525,6 +525,7 @@ class WatchIn(BaseModel):
     purchased_on: date | None = None
     supplier: str | None = None
     note: str | None = None
+    taken_by: str | None = None
 
 
 class BulkIn(BaseModel):
@@ -581,6 +582,7 @@ def watch_rows(s, uid):
                     "manufacturer": w.manufacturer, "quantity": w.quantity,
                     "purchased_on": w.purchased_on.isoformat() if w.purchased_on else None,
                     "supplier": w.supplier, "source": w.source, "status": w.status, "note": w.note,
+                    "taken_by": w.taken_by,
                     "added": w.created_at.isoformat(), "failed": bool(hit),
                     "match_note": match_note, "mismatch": mismatch,
                     "record": rec_json(hit) if hit else None, "company": co,
@@ -600,7 +602,7 @@ def _add_items(s, uid, items: list[WatchIn], source: str) -> int:
         s.add(WatchItem(user_id=uid, batch_no=it.batch_no.strip(), batch_norm=n, drug_name=(it.drug_name or None),
                         manufacturer=it.manufacturer or None, quantity=it.quantity or None,
                         purchased_on=it.purchased_on or date.today(), supplier=it.supplier or None,
-                        note=it.note, source=source))
+                        note=it.note, source=source, taken_by=(it.taken_by or "").strip()[:80] or None))
         added += 1
     s.commit()
     return added
@@ -732,22 +734,42 @@ def watch_delete(wid: int, u: User = Depends(current_user)):
 
 # ------------------------------------------------------------------ user settings
 class SettingsIn(BaseModel):
-    email_alerts: bool
+    email_alerts: bool | None = None
+    extra_emails: list[str] | None = None
 
 
 @app.get("/api/me/settings")
 def my_settings(u: User = Depends(current_user)):
-    from pipeline.config import SMTP_USER, SMTP_PASSWORD
-    return {"email_alerts": u.email_alerts is not False, "email_ready": bool(SMTP_USER and SMTP_PASSWORD),
+    from pipeline.config import SMTP_USER, SMTP_PASSWORD, BREVO_API_KEY, MAIL_FROM
+    return {"email_alerts": u.email_alerts is not False,
+            "email_ready": bool((BREVO_API_KEY and MAIL_FROM) or (SMTP_USER and SMTP_PASSWORD)),
             "email": u.email, "name": u.name, "organisation": u.organisation,
-            "account_type": u.account_type or "business"}
+            "account_type": u.account_type or "business", "extra_emails": u.extra_emails or []}
 
 
 @app.patch("/api/me/settings")
 def set_settings(body: SettingsIn, u: User = Depends(current_user)):
     with SessionLocal() as s:
         x = s.get(User, u.id)
-        x.email_alerts = body.email_alerts
+        if body.email_alerts is not None:
+            x.email_alerts = body.email_alerts
+        if body.extra_emails is not None:
+            from email_validator import validate_email, EmailNotValidError
+            clean = []
+            for e in body.extra_emails:
+                e = (e or "").strip().lower()
+                if not e or e == x.email.lower() or e in clean:
+                    continue
+                try:
+                    validate_email(e, check_deliverability=False)
+                except EmailNotValidError:
+                    raise HTTPException(400, f"Not a valid email: {e}")
+                clean.append(e)
+            if len(clean) > 3:
+                raise HTTPException(400, "You can add up to 3 staff emails")
+            if clean and (x.account_type or "business") != "business":
+                raise HTTPException(400, "Staff emails are for Pharmacy & Business accounts")
+            x.extra_emails = clean
         s.commit()
     return my_settings(x)
 

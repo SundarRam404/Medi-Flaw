@@ -28,13 +28,13 @@ export default function Home() {
         <img src="/landscape.svg" alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
         <div className="relative mx-auto max-w-6xl px-4 pb-24 pt-44 text-center md:pb-32 md:pt-56">
           <p className="mx-auto inline-block rounded-full bg-white/60 px-3 py-1 text-xs text-ink backdrop-blur">
-            Live data from CDSCO drug quality alerts, India
+            Making Medicine Quality Transparent
           </p>
           <h1 className="h-display mx-auto mt-5 max-w-3xl text-5xl md:text-7xl">
             Has your medicine batch failed?
           </h1>
           <p className="mx-auto mt-5 max-w-xl text-lg text-[#5b4d47]">
-            Type the batch number printed on the strip, or a medicine or company name.
+            Type the batch number printed on the strip, or a medicine or company name. Live data from CDSCO, India.
           </p>
           <form onSubmit={go} className="mx-auto mt-8 flex max-w-2xl items-center rounded-full bg-white p-1.5 shadow-soft">
             <input className="min-w-0 flex-1 bg-transparent px-5 py-3 text-base text-ink outline-none placeholder:text-[#a8988f]"
