@@ -8,7 +8,7 @@ from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File, F
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select, func, or_, desc, text
-from pipeline.db import (SessionLocal, init_db, utcnow, RawRecord, Record, Company, CleaningLog, User,
+from pipeline.db import (SessionLocal, init_db, utcnow, RawRecord, Record, Company, CleaningLog, User, EmailCode,
                          WatchItem, Alert, PipelineRun, Spike, ModelReport, AskLog)
 from pipeline.config import SECRET_KEY, PIPELINE_KEY, N8N_WEBHOOK_URL, GROQ_API_KEY, GROQ_MODEL, GEMINI_API_KEY, GEMINI_MODEL, LLM_ORDER
 from pipeline import run as pipeline
@@ -129,18 +129,84 @@ def user_json(u: User):
             "account_type": u.account_type or "business"}
 
 
+def _code_hash(email: str, code: str) -> str:
+    import hashlib, hmac
+    return hmac.new(SECRET_KEY.encode(), f"{email}:{code}".encode(), hashlib.sha256).hexdigest()
+
+
 @app.post("/api/auth/register")
 def register(body: Register):
+    """Step 1 of sign-up: check the details and email a 6-digit code. No account is made yet."""
+    import secrets
+    from pipeline.alerts import send_email
+    email = body.email.lower().strip()
+    if len(body.password) < 8:
+        raise HTTPException(400, "Use a password with at least 8 characters")
+    if not body.name.strip():
+        raise HTTPException(400, "Please enter your name")
+    now = utcnow()
     with SessionLocal() as s:
-        if s.scalar(select(User).where(User.email == body.email.lower())):
-            raise HTTPException(400, "This email is already registered")
-        if len(body.password) < 8:
-            raise HTTPException(400, "Use a password with at least 8 characters")
+        if s.scalar(select(User).where(User.email == email)):
+            raise HTTPException(400, "This email is already registered. Log in instead.")
+        recent = s.scalars(select(EmailCode).where(EmailCode.email == email,
+                                                  EmailCode.created_at > now - timedelta(hours=1))).all()
+        if any(c.created_at > now - timedelta(seconds=45) for c in recent):
+            raise HTTPException(429, "A code was just sent. Please wait a moment before asking again.")
+        if len(recent) >= 5:
+            raise HTTPException(429, "Too many codes for this email. Try again in an hour.")
+        code = f"{secrets.randbelow(1000000):06d}"
         acct = _acct(body.account_type)
-        u = User(email=body.email.lower(), name=body.name.strip(),
-                 organisation=(body.organisation or None) if acct == "business" else None,
-                 account_type=acct, auth_provider="password",
-                 role="pharmacist", password_hash=pipeline.hash_pw(body.password))
+        s.add(EmailCode(email=email, code_hash=_code_hash(email, code), expires_at=now + timedelta(minutes=10),
+                        payload={"name": body.name.strip()[:200], "account_type": acct,
+                                 "organisation": (body.organisation or "").strip()[:200] or None if acct == "business" else None,
+                                 "password_hash": pipeline.hash_pw(body.password)}))
+        s.commit()
+    status = send_email(email, f"{code} is your Medi-Flaw code",
+                        f"""Hello {body.name.strip()},
+
+Your Medi-Flaw sign-up code is:
+
+    {code}
+
+It works for 10 minutes. If you did not ask for this, you can ignore this email.
+
+Medi-Flaw""")
+    if status != "sent":
+        raise HTTPException(503, "We could not send the code right now. Please try again, or continue with Google.")
+    return {"verify": True, "email": email}
+
+
+class VerifyIn(BaseModel):
+    email: EmailStr
+    code: str
+
+
+@app.post("/api/auth/verify")
+def verify_code(body: VerifyIn):
+    """Step 2 of sign-up: the right code creates the account and logs in."""
+    email = body.email.lower().strip()
+    code = re.sub(r"\D", "", body.code or "")
+    with SessionLocal() as s:
+        c = s.scalar(select(EmailCode).where(EmailCode.email == email, EmailCode.used == False)  # noqa: E712
+                     .order_by(desc(EmailCode.id)).limit(1))
+        if not c or c.expires_at < utcnow():
+            raise HTTPException(400, "This code has expired. Ask for a new one.")
+        if c.attempts >= 5:
+            raise HTTPException(429, "Too many wrong tries. Ask for a new code.")
+        if len(code) != 6 or _code_hash(email, code) != c.code_hash:
+            c.attempts += 1
+            s.commit()
+            left = 5 - c.attempts
+            raise HTTPException(400, f"Wrong code. {left} {'try' if left == 1 else 'tries'} left." if left else "Too many wrong tries. Ask for a new code.")
+        if s.scalar(select(User).where(User.email == email)):
+            c.used = True
+            s.commit()
+            raise HTTPException(400, "This email is already registered. Log in instead.")
+        p = c.payload or {}
+        u = User(email=email, name=p.get("name") or email.split("@")[0], organisation=p.get("organisation"),
+                 account_type=p.get("account_type") or "business", auth_provider="password",
+                 role="pharmacist", password_hash=p["password_hash"])
+        c.used = True
         s.add(u)
         s.commit()
         return {"token": make_token(u), "user": user_json(u)}

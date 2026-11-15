@@ -37,6 +37,9 @@ export default function Welcome() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
   const [gid, setGid] = useState<string | null>(null);
+  const [pending, setPending] = useState<string | null>(null); // email waiting for its code
+  const [code, setCode] = useState("");
+  const [note, setNote] = useState("");
   const gBox = useRef<HTMLDivElement>(null);
   const kindRef = useRef(kind);
   kindRef.current = kind;
@@ -81,9 +84,27 @@ export default function Welcome() {
       const body = mode === "login"
         ? { email: f.email, password: f.password }
         : { ...f, organisation: kind === "business" ? f.organisation : null, account_type: kind };
-      done(await api(`/api/auth/${mode}`, { method: "POST", body: JSON.stringify(body) }));
+      const r = await api(`/api/auth/${mode}`, { method: "POST", body: JSON.stringify(body) });
+      if (r.verify) { setPending(r.email); setCode(""); setNote(""); } else done(r);
     } catch (e: any) { setErr(e.message); }
     setBusy(false);
+  }
+
+  async function verify(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true); setErr("");
+    try { done(await api("/api/auth/verify", { method: "POST", body: JSON.stringify({ email: pending, code }) })); }
+    catch (e: any) { setErr(e.message); }
+    setBusy(false);
+  }
+
+  async function resend() {
+    setErr(""); setNote("");
+    try {
+      await api("/api/auth/register", { method: "POST",
+        body: JSON.stringify({ ...f, organisation: kind === "business" ? f.organisation : null, account_type: kind }) });
+      setNote("New code sent.");
+    } catch (e: any) { setErr(e.message); }
   }
 
   function guest() {
@@ -96,6 +117,26 @@ export default function Welcome() {
       <img src="/landscape.svg" alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
       <div className="relative w-full max-w-[400px] rounded-3xl border border-white/70 bg-white/85 p-6 shadow-soft backdrop-blur-xl sm:p-7">
         <Logo size={22} />
+        {pending ? (
+          <>
+            <h1 className="h-display mt-5 text-[34px]">Check your email</h1>
+            <p className="mt-1 text-sm text-muted">We sent a 6-digit code to <b className="font-medium text-ink">{pending}</b>. It works for 10 minutes.</p>
+            <form onSubmit={verify} className="mt-5 space-y-2.5">
+              <input className="input py-3 text-center font-mono text-2xl tracking-[0.5em]" inputMode="numeric" autoComplete="one-time-code"
+                maxLength={6} placeholder="------" value={code} autoFocus
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} />
+              {err && <p className="rounded-xl bg-bad-light px-3 py-2 text-sm text-bad">{err}</p>}
+              {note && <p className="rounded-xl bg-ok-light px-3 py-2 text-sm text-ok">{note}</p>}
+              <button className="btn w-full py-2.5" disabled={busy || code.length !== 6}>{busy ? "Checking..." : "Verify and create account"}</button>
+            </form>
+            <p className="mt-3 text-center text-sm text-muted">
+              No email? Check spam, or <button className="font-medium text-brand hover:underline" onClick={resend}>send a new code</button>
+            </p>
+            <p className="mt-1 text-center text-sm">
+              <button className="text-muted hover:text-ink" onClick={() => { setPending(null); setErr(""); setNote(""); }}>&larr; Change email</button>
+            </p>
+          </>
+        ) : (<>
         <h1 className="h-display mt-5 text-[34px]">{mode === "login" ? "Welcome" : "Create account"}</h1>
         <p className="mt-1 text-sm text-muted">Check any medicine batch against government lab results.</p>
 
@@ -148,6 +189,8 @@ export default function Welcome() {
           <button onClick={guest} className="btn-light w-full py-2.5">Continue without an account</button>
           <p className="mt-1.5 text-[11px] text-muted">Search freely. Nothing is saved.</p>
         </div>
+
+        </>)}
 
         <p className="mt-3 text-center text-[11px] text-[#a8988f]">
           <Link href="/privacy" className="text-[#a8988f]">Privacy</Link> &middot; <Link href="/terms" className="text-[#a8988f]">Terms</Link>

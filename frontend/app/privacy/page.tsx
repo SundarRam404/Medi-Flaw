@@ -36,7 +36,7 @@ export default function Privacy() {
       <h2>Services that process data for us</h2>
       <ul>
         <li>Vercel (website), Render (server) and Neon (database) host the app.</li>
-        <li>Brevo sends alert emails.</li>
+        <li>Brevo sends sign-up codes and alert emails.</li>
         <li>Groq answers questions in &ldquo;Ask&rdquo;. Only the question text is sent, never your account details.</li>
         <li>Google provides &ldquo;Sign in with Google&rdquo; if you choose it.</li>
       </ul>

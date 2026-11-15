@@ -104,6 +104,19 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
+class EmailCode(Base):
+    """A 6-digit code emailed at sign-up. The account is only created once the code is entered."""
+    __tablename__ = "email_codes"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(200), index=True)
+    code_hash: Mapped[str] = mapped_column(String(64))
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)  # name, organisation, account_type, password_hash
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    used: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
 class WatchItem(Base):
     __tablename__ = "watchlist"
     __table_args__ = (UniqueConstraint("user_id", "batch_norm"),)
