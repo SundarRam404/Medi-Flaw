@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, fmt, month, dateTime, looksLikeBatch, getUser } from "@/lib/api";
 import { Danger, Table, Td, BatchLink, ErrorNote } from "@/components/ui";
+import ScanButton from "@/components/ScanButton";
 
 export default function Home() {
   const router = useRouter();
@@ -41,6 +42,11 @@ export default function Home() {
               placeholder="Batch number, medicine or company" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
             <button className="btn px-7 py-3 text-base">Check</button>
           </form>
+          <div className="mx-auto mt-3 flex max-w-2xl flex-wrap items-center justify-center gap-2 text-sm text-[#5b4d47]">
+            <span>or</span>
+            <ScanButton label="Scan the QR code on your strip" className="bg-white/80"
+              onResult={(r) => { const b = r.batch || (r.candidates.length === 1 ? r.candidates[0] : ""); if (b) router.push(`/batch/${encodeURIComponent(b)}`); else if (r.candidates.length) setQ(r.candidates[0]); }} />
+          </div>
           <p className="mt-4 text-sm text-[#5b4d47]">
             Try <button className={`font-mono ${ex}`} onClick={() => router.push("/batch/SHT7550")}>SHT7550</button>,{" "}
             <button className={ex} onClick={() => router.push("/search?q=paracetamol")}>paracetamol</button> or{" "}
@@ -84,7 +90,7 @@ export default function Home() {
         )}
 
         <div className="mt-14 grid gap-3 md:grid-cols-3">
-          <How n="1" t="Check a batch" d="Search any batch number against every CDSCO failed-quality list since 2022." />
+          <How n="1" t="Check a batch" d={`Search any batch number against every CDSCO failed-quality list${s?.first_month ? ` since ${s.first_month.slice(0, 4)}` : ""}.`} />
           <How n="2" t="Watch what you hold" d="Save your batches. You get an email the day one of them fails a test." />
           <How n="3" t="Know the company" d="See each maker's failure history and its chance of failing again." />
         </div>

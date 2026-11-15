@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, dateTime, month } from "@/lib/api";
 import { Box, Table, Td, Danger, Band, Loading, ErrorNote } from "@/components/ui";
+import ScanButton from "@/components/ScanButton";
 
 declare global { interface Window { Tesseract: any } }
 
@@ -232,7 +233,11 @@ export default function Business({ user, onSettings }: { user: any; onSettings?:
 
         {tab === "one" && (
           <form onSubmit={addOne} className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            <input className="input" placeholder="Batch number *" required value={f.batch_no} onChange={(e) => setF({ ...f, batch_no: e.target.value })} />
+            <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-2">
+              <input className="input min-w-0 flex-1 font-mono" placeholder="Batch number *" required value={f.batch_no} onChange={(e) => setF({ ...f, batch_no: e.target.value })} />
+              <ScanButton onResult={(r) => setF((x) => ({ ...x, batch_no: r.batch || r.candidates[0] || x.batch_no,
+                drug_name: x.drug_name || r.name || "", manufacturer: x.manufacturer || r.maker || "" }))} />
+            </div>
             <input className="input lg:col-span-2" placeholder="Medicine name" value={f.drug_name} onChange={(e) => setF({ ...f, drug_name: e.target.value })} />
             <input className="input" placeholder="Company" value={f.manufacturer} onChange={(e) => setF({ ...f, manufacturer: e.target.value })} />
             <input className="input" placeholder="Quantity" type="number" value={f.quantity} onChange={(e) => setF({ ...f, quantity: e.target.value })} />

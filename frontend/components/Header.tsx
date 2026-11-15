@@ -86,6 +86,8 @@ export default function Header() {
         </Link>
         <Link href="/" className={`hidden shrink-0 rounded-full px-3.5 py-1.5 text-sm text-ink transition hover:no-underline sm:inline-block ${
           searchOn ? "bg-white/80 font-medium shadow-sm" : "opacity-75 hover:bg-white/50 hover:opacity-100"}`}>Search</Link>
+        <Link href="/companies" className={`hidden shrink-0 rounded-full px-3.5 py-1.5 text-sm text-ink transition hover:no-underline sm:inline-block ${
+          path.startsWith("/companies") ? "bg-white/80 font-medium shadow-sm" : "opacity-75 hover:bg-white/50 hover:opacity-100"}`}>Companies</Link>
         <Link href="/watchlist" className="btn shrink-0 px-4 py-2 hover:no-underline">{mine}</Link>
 
         {!user ? (

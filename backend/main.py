@@ -148,7 +148,7 @@ def verify_google(credential: str) -> dict:
 
 
 def make_token(u: User) -> str:
-    return jwt.encode({"sub": str(u.id), "role": u.role, "exp": utcnow() + timedelta(hours=12)},
+    return jwt.encode({"sub": str(u.id), "role": u.role, "exp": utcnow() + timedelta(days=7)},
                       SECRET_KEY, algorithm="HS256")
 
 
@@ -725,6 +725,17 @@ def company(cid: int):
             "by_year": [{"year": y, "count": n} for y, n in sorted(by_year.items())],
             "by_category": sorted([{"category": k, "count": v} for k, v in by_cat.items()], key=lambda x: -x["count"]),
             "spikes": [{"month": x.month.isoformat(), "failures": x.failures, "usual": x.usual} for x in spikes]}
+
+
+@app.get("/api/states")
+def states():
+    """Failed batches, HIGH-danger batches and companies per manufacturer state, for the India map."""
+    with SessionLocal() as s:
+        rows = s.execute(text(
+            "select coalesce(state,'Not known') as state, count(*) as count, "
+            "sum((danger='HIGH')::int) as high, count(distinct company_id) as companies "
+            "from records group by 1 order by 2 desc")).all()
+    return {"items": [dict(r._mapping) for r in rows]}
 
 
 @app.get("/api/insights")

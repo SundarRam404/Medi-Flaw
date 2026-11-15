@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { api, month, dateTime } from "@/lib/api";
 import { Danger, Loading, ErrorNote } from "@/components/ui";
-import { loadOCR, batchCandidates } from "@/lib/ocr";
+import ScanButton from "@/components/ScanButton";
+import type { ScanResult } from "@/lib/scan";
 
 const PEOPLE = ["Me", "Amma", "Appa", "Paati", "Thatha", "Child"];
 
@@ -36,11 +37,9 @@ export default function Personal({ user, onSettings }: { user: any; onSettings?:
   const [adding, setAdding] = useState(false);
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
-  const [scan, setScan] = useState("");
   const [cands, setCands] = useState<string[]>([]);
   const [noteFor, setNoteFor] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
-  const cam = useRef<HTMLInputElement>(null);
 
   function load() {
     api("/api/watchlist").then((d) => setItems(d.items)).catch((e) => setErr(e.message));
@@ -66,21 +65,11 @@ export default function Personal({ user, onSettings }: { user: any; onSettings?:
     finally { setAdding(false); }
   }
 
-  async function readStrip() {
-    const fl = cam.current?.files?.[0]; if (!fl) return;
-    setErr(""); setCands([]);
-    try {
-      setScan("Loading the reader...");
-      const T = await loadOCR();
-      setScan("Reading the strip (10-20 seconds)...");
-      const r = await T.recognize(fl, "eng");
-      const c = batchCandidates(r.data.text || "");
-      if (!c.length) setErr("Could not find a batch number. Try a closer, sharper photo of the side that says B.No. or Batch, or type it.");
-      else if (c.length === 1) setF((x) => ({ ...x, batch_no: c[0] }));
-      setCands(c);
-    } catch (e: any) { setErr(e.message); }
-    setScan("");
-    if (cam.current) cam.current.value = "";
+  function onScan(r: ScanResult) {
+    setErr("");
+    setF((x) => ({ ...x, batch_no: r.batch || x.batch_no, drug_name: x.drug_name || r.name || "" }));
+    setCands(r.batch ? [] : r.candidates);
+    if (r.batch) setMsg(r.how === "code" ? "Read from the QR code. Check it matches the strip, then press Add and check." : "");
   }
 
   async function setStatus(id: number, status: string) {
@@ -136,10 +125,9 @@ export default function Personal({ user, onSettings }: { user: any; onSettings?:
         <h2 className="text-[15px] font-medium">Add a medicine</h2>
         <form onSubmit={add} className="mt-3 grid gap-2.5 sm:grid-cols-2">
           <input className="input" placeholder="Medicine name, e.g. Dolo 650" value={f.drug_name} onChange={(e) => setF({ ...f, drug_name: e.target.value })} />
-          <div className="flex gap-2">
-            <input className="input font-mono" placeholder="Batch number *" required value={f.batch_no} onChange={(e) => setF({ ...f, batch_no: e.target.value })} />
-            <button type="button" onClick={() => cam.current?.click()} className="btn-light shrink-0 px-3" title="Scan the strip with your camera">&#128247; Scan</button>
-            <input ref={cam} type="file" accept="image/*" capture="environment" className="hidden" onChange={readStrip} />
+          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+            <input className="input min-w-0 flex-1 font-mono" placeholder="Batch number *" required value={f.batch_no} onChange={(e) => setF({ ...f, batch_no: e.target.value })} />
+            <ScanButton onResult={onScan} />
           </div>
           <div className="sm:col-span-2">
             <span className="label">Who takes it?</span>
@@ -154,7 +142,6 @@ export default function Personal({ user, onSettings }: { user: any; onSettings?:
           </div>
           <button className="btn sm:col-span-2" disabled={adding}>{adding ? "Checking..." : "Add and check"}</button>
         </form>
-        {scan && <p className="mt-3 text-sm text-muted">{scan}</p>}
         {cands.length > 1 && (
           <div className="mt-3 text-sm">
             <span className="text-muted">Which one is the batch number? </span>

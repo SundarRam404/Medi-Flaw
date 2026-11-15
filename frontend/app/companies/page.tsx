@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, month } from "@/lib/api";
 import { Band, PageTitle, Table, Td, Pager, Loading, ErrorNote } from "@/components/ui";
+import IndiaMap from "@/components/IndiaMap";
 
 export default function Companies() {
   const [sort, setSort] = useState("risk");
@@ -12,6 +13,7 @@ export default function Companies() {
   const [page, setPage] = useState(1);
   const [d, setD] = useState<any>(null);
   const [err, setErr] = useState("");
+  const [all, setAll] = useState(false); // full list with filters, or just the top 5
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -25,7 +27,43 @@ export default function Companies() {
     <div>
       <PageTitle title="Companies"
         sub="Every manufacturer with at least one failed batch. Risk is the chance of another failed batch in the next 6 months, based on its past record." />
-      <div className="mb-4 flex flex-wrap gap-2">
+
+      <section className="card p-5">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-[15px] font-medium">Where the failed batches were made</h2>
+          {state && <button className="text-sm text-brand hover:underline" onClick={() => { setState(""); setPage(1); }}>Show all of India</button>}
+        </div>
+        <IndiaMap picked={state} onPick={(st) => { setState(st === state ? "" : st); setPage(1); }} />
+      </section>
+
+      {!all && (
+        <section className="card mt-4 p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-[15px] font-medium">Riskiest companies{state ? ` in ${state}` : ""}</h2>
+            {d && <span className="text-xs text-muted">{d.total} companies{state ? ` in ${state}` : ""} have a failed batch</span>}
+          </div>
+          {!d ? <Loading /> : (
+            <ol className="mt-3 divide-y divide-line/70">
+              {d.items.slice(0, 5).map((c: any, i: number) => (
+                <li key={c.id} className="flex flex-wrap items-center gap-3 py-3">
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-bad-light text-xs font-medium text-bad">{i + 1}</span>
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/companies/${c.id}`} className="font-medium text-ink">{c.name}</Link>
+                    <div className="text-xs text-muted">{c.state || "State not known"} &middot; {c.total_failures} failed batches &middot; last {month(c.last_month)}</div>
+                  </div>
+                  <span className="whitespace-nowrap text-sm tabular-nums">{c.risk_score}% <Band band={c.risk_band} /></span>
+                </li>
+              ))}
+            </ol>
+          )}
+          <button className="btn-light mt-3 w-full" onClick={() => setAll(true)}>
+            Show all {d ? d.total : ""} companies{state ? ` in ${state}` : ""} &darr;
+          </button>
+        </section>
+      )}
+
+      {all && (<>
+      <div className="mb-4 mt-6 flex flex-wrap gap-2">
         <input className="input max-w-xs" placeholder="Company name" value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} />
         <select className="input w-auto" value={state} onChange={(e) => { setState(e.target.value); setPage(1); }}>
           <option value="">All states</option>
@@ -58,7 +96,21 @@ export default function Companies() {
       )}
       {err && <ErrorNote msg={err} />}
       {!d ? <Loading /> : (
-        <div className="card p-2">
+        <>
+        {/* phones: cards, so the risk is always visible */}
+        <ul className="space-y-2 md:hidden">
+          {d.items.map((c: any) => (
+            <li key={c.id} className="card p-4">
+              <div className="flex items-start justify-between gap-2">
+                <Link href={`/companies/${c.id}`} className="font-medium text-ink">{c.name}</Link>
+                <span className="whitespace-nowrap text-sm tabular-nums">{c.risk_score}% <Band band={c.risk_band} /></span>
+              </div>
+              <div className="mt-1 text-xs text-muted">{c.state || "-"} &middot; {c.period_failures} failed &middot; last {month(c.last_month)} &middot; repeat {Math.round(c.repeat_score)}</div>
+            </li>
+          ))}
+          <li><Pager page={page} total={d.total} size={50} onPage={setPage} /></li>
+        </ul>
+        <div className="card hidden p-2 md:block">
           <Table head={["Company", "State", period === "all" ? "Failed batches" : "Failed in period", "Last failure", "Repeat score", "Risk (6 months)"]}>
             {d.items.map((c: any) => (
               <tr key={c.id}>
@@ -73,7 +125,10 @@ export default function Companies() {
           </Table>
           <div className="px-2 pb-2"><Pager page={page} total={d.total} size={50} onPage={setPage} /></div>
         </div>
+        <button className="btn-light mt-3" onClick={() => { setAll(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Show less &uarr;</button>
+        </>
       )}
+      </>)}
     </div>
   );
 }
