@@ -122,6 +122,28 @@ def run(run_id=None, record_ids: list[int] | None = None) -> dict:
         return _run(run_id, record_ids)
 
 
+def _digest(user: User, parts: list[tuple[str, str]]) -> tuple[str, str]:
+    """Several failed batches for one person become one email instead of many."""
+    if len(parts) == 1:
+        return parts[0]
+    n = len(parts)
+    personal = (user.account_type or "business") == "personal"
+    subject = (f"{n} medicines you saved failed a government quality test" if personal
+               else f"{n} batches on your list failed a CDSCO quality test")
+    blocks = []
+    for i, (_, body) in enumerate(parts, 1):
+        lines = body.split("\n")
+        # keep each email's details and links, drop the repeated greeting and sign-off
+        core = [l for l in lines if not l.startswith("Hello ") and not l.startswith("Medi-Flaw")
+                and not l.startswith("(This alert") and not l.startswith("(Based only")]
+        blocks.append(f"---------- {i} of {n} ----------\n" + "\n".join(core).strip())
+    body = f"Hello {user.name},\n\n{n} items on your Medi-Flaw list appear in the official CDSCO list of medicines\n" \
+           f"that are Not of Standard Quality. Details for each are below.\n\n" + "\n\n".join(blocks) + \
+           "\n\nMedi-Flaw - Making Medicine Quality Transparent\n" \
+           "(Based only on the official CDSCO list. Please check the original list before acting.)\n"
+    return subject, body
+
+
 def _run(run_id=None, record_ids: list[int] | None = None) -> dict:
     sent = outbox = failed = 0
     with SessionLocal() as s:
@@ -131,25 +153,44 @@ def _run(run_id=None, record_ids: list[int] | None = None) -> dict:
             if not record_ids:
                 return {"matched": 0, "sent": 0, "outbox": 0, "failed": 0}
             q = q.where(Record.id.in_(record_ids))
-        done = {(a.watch_id, a.record_id) for a in s.scalars(select(Alert)).all()}
+        existing = {(a.watch_id, a.record_id): a for a in s.scalars(select(Alert)).all()}
         matched = 0
         from .matching import same_batch
+        per_user: dict[int, list] = {}
         for w, rec in s.execute(q).all():
-            if (w.id, rec.id) in done or not same_batch(w.manufacturer, w.drug_name, rec)[0]:
+            prev = existing.get((w.id, rec.id))
+            # already delivered (or saved / switched off): skip. Failed earlier: try again now.
+            if (prev and prev.delivery != "failed") or not same_batch(w.manufacturer, w.drug_name, rec)[0]:
                 continue
             matched += 1
-            user = s.get(User, w.user_id)
-            token = secrets.token_urlsafe(16)
-            subject, body = alert_text(user, rec, token, getattr(w, "taken_by", None))
-            status = send_email(user.email, subject, body) if user.email_alerts is not False else "off"
+            per_user.setdefault(w.user_id, []).append((w, rec, prev))
+
+        for uid, items in per_user.items():
+            user = s.get(User, uid)
+            rows, parts = [], []
+            for w, rec, prev in items:
+                token = prev.token if prev else secrets.token_urlsafe(16)
+                subj, body = alert_text(user, rec, token, getattr(w, "taken_by", None))
+                parts.append((subj, body))
+                rows.append((w, rec, prev, token, subj, body))
+            subject, body = _digest(user, parts)
             if user.email_alerts is not False:
-                for extra in staff_emails(user):  # owner/staff copies, best effort
-                    send_email(extra, subject, body)
-            sent += status == "sent"
-            outbox += status == "outbox"
-            failed += status == "failed"
-            s.add(Alert(user_id=user.id, watch_id=w.id, record_id=rec.id, run_id=run_id, to_email=user.email,
-                        subject=subject, body=body, delivery=status, token=token))
+                status = send_email(user.email, subject, body)
+                if status == "sent":
+                    for extra in staff_emails(user):  # owner/staff copies, best effort
+                        send_email(extra, subject, body)
+            else:
+                status = "off"
+            n = len(rows)
+            sent += n if status == "sent" else 0
+            outbox += n if status == "outbox" else 0
+            failed += n if status == "failed" else 0
+            for w, rec, prev, token, subj, b in rows:
+                if prev:  # retry of an earlier failed send
+                    prev.delivery, prev.sent_at, prev.run_id, prev.subject, prev.body = status, utcnow(), run_id, subj, b
+                else:
+                    s.add(Alert(user_id=user.id, watch_id=w.id, record_id=rec.id, run_id=run_id, to_email=user.email,
+                                subject=subj, body=b, delivery=status, token=token))
         s.commit()
     return {"matched": matched, "sent": sent, "outbox": outbox, "failed": failed}
 
@@ -166,13 +207,21 @@ def followups(run_id=None, days: int | None = None) -> dict:
                         .where(Alert.acknowledged_at.is_(None), Alert.followup_at.is_(None),
                                Alert.sent_at <= cutoff, Alert.delivery == "sent",
                                User.email_alerts.is_not(False))).all()
+        by_user: dict[int, list] = {}
         for a in due:
-            body = f"Reminder: you have not confirmed this alert yet.\n\n{a.body}"
-            send_email(a.to_email, "Reminder: " + a.subject, body)
-            u = s.get(User, a.user_id)
-            for extra in staff_emails(u) if u else []:
-                send_email(extra, "Reminder: " + a.subject, body)
-            a.followup_at = utcnow()
-            n += 1
+            by_user.setdefault(a.user_id, []).append(a)
+        for uid, items in by_user.items():  # one reminder email per person, however many alerts
+            u = s.get(User, uid)
+            if not u:
+                continue
+            subject, body = _digest(u, [(a.subject, a.body) for a in items])
+            body = f"Reminder: you have not confirmed {'this alert' if len(items) == 1 else 'these alerts'} yet.\n\n{body}"
+            if send_email(u.email, "Reminder: " + subject, body) != "sent":
+                continue  # try again on the next run
+            for extra in staff_emails(u):
+                send_email(extra, "Reminder: " + subject, body)
+            for a in items:
+                a.followup_at = utcnow()
+            n += len(items)
         s.commit()
     return {"reminders": n, "after_days": days}
