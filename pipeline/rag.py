@@ -168,10 +168,10 @@ def run(run_id=None) -> dict:
         import chromadb
         client = chromadb.PersistentClient(path=str(CHROMA_DIR))
         try:
-            client.delete_collection("pharmaaudit")
+            client.delete_collection("mediflaw")
         except Exception:
             pass
-        col = client.create_collection("pharmaaudit", metadata={"hnsw:space": "cosine"})
+        col = client.create_collection("mediflaw", metadata={"hnsw:space": "cosine"})
         for i in range(0, len(docs), 500):
             part = docs[i:i + 500]
             col.add(ids=[d["id"] for d in part], documents=[d["text"] for d in part],
@@ -223,7 +223,11 @@ def _vector_search(q, k):
     try:
         if "chroma" not in _cache:
             import chromadb
-            _cache["chroma"] = chromadb.PersistentClient(path=str(CHROMA_DIR)).get_collection("pharmaaudit")
+            _client = chromadb.PersistentClient(path=str(CHROMA_DIR))
+            try:
+                _cache["chroma"] = _client.get_collection("mediflaw")
+            except Exception:  # index built before the rename
+                _cache["chroma"] = _client.get_collection("pharmaaudit")
         res = _cache["chroma"].query(query_texts=[q], n_results=k)
         return [i for i, d in zip(res["ids"][0], res["distances"][0]) if d < 0.75]
     except Exception:

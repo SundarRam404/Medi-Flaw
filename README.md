@@ -17,7 +17,7 @@ and a monthly update run by n8n.
 | `pipeline/run.py` | Runs the steps and records each run |
 | `backend/main.py` | FastAPI: all APIs, login (JWT), endpoints n8n calls |
 | `frontend/` | Next.js website |
-| `n8n/pharmaaudit_monthly.json` | n8n workflow, import into n8n |
+| `n8n/medi-flaw_monthly.json` | n8n workflow, import into n8n |
 | `eval/ai_eval.py` | 50-question test of the Ask feature |
 | `data/cdsco_seed.csv` | 6,338 CDSCO rows collected in Phase 1 (Jan 2019 to Jul 2026) |
 
@@ -26,7 +26,7 @@ and a monthly update run by n8n.
 Needs Python 3.10+ and Node.js 20+.
 
 ```bash
-cd ~/Desktop/"Mini project"/pharmaaudit-app
+cd ~/Desktop/"Mini project"/Medi-Flaw
 
 # 1. Python packages (inside a virtual environment)
 python3 -m venv .venv
@@ -61,7 +61,7 @@ npx n8n
 
 ### n8n, first time
 1. Open http://localhost:5678 and create the owner account.
-2. Workflows > Import from file > `n8n/pharmaaudit_monthly.json`.
+2. Workflows > Import from file > `n8n/medi-flaw_monthly.json`.
 3. Check the **Settings** node: `api` = `http://localhost:8000`, `key` = same as `PIPELINE_KEY` in `.env`.
 4. Click **Active** (top right). It now runs on the 1st of every month at 6 AM, and the website's
    **Run now** button triggers it through the webhook.
