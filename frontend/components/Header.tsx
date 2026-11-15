@@ -17,6 +17,8 @@ export default function Header() {
   const [f, setF] = useState({ current: "", next: "" });
   const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [setp, setSetp] = useState<0 | 1 | 2>(0); // google user: 1 = asking, 2 = code sent
+  const [sc, setSc] = useState({ code: "", pw: "" });
   const box = useRef<HTMLDivElement>(null);
   const home = path === "/";
 
@@ -28,7 +30,7 @@ export default function Header() {
   }, []);
   useEffect(() => { setMenu(false); }, [path]);
   useEffect(() => {
-    if (!menu) { setPick(false); setPw(false); setMsg(null); return; }
+    if (!menu) { setPick(false); setPw(false); setMsg(null); setSetp(0); return; }
     const close = (e: MouseEvent) => { if (box.current && !box.current.contains(e.target as Node)) setMenu(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setMenu(false); };
     document.addEventListener("mousedown", close);
@@ -51,6 +53,23 @@ export default function Header() {
     try {
       await api("/api/auth/password", { method: "POST", body: JSON.stringify({ current: f.current, new: f.next }) });
       setMsg({ ok: true, t: "Password changed." }); setF({ current: "", next: "" }); setPw(false);
+    } catch (e: any) { setMsg({ ok: false, t: e.message }); }
+    setBusy(false);
+  }
+
+  async function sendSetCode() {
+    setBusy(true); setMsg(null);
+    try { await api("/api/auth/reset/start", { method: "POST", body: JSON.stringify({ email: user.email }) }); setSetp(2); setSc({ code: "", pw: "" }); }
+    catch (e: any) { setMsg({ ok: false, t: e.message }); }
+    setBusy(false);
+  }
+  async function finishSet(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true); setMsg(null);
+    try {
+      const r = await api("/api/auth/reset/finish", { method: "POST", body: JSON.stringify({ email: user.email, code: sc.code, new: sc.pw }) });
+      saveLogin(r.token, r.user);
+      setSetp(0); setMsg({ ok: true, t: "Password set. You can now log in with Google or with email." });
     } catch (e: any) { setMsg({ ok: false, t: e.message }); }
     setBusy(false);
   }
@@ -108,7 +127,21 @@ export default function Header() {
                   <Link href="/watchlist" className="block rounded-lg px-2 py-1.5 text-ink hover:bg-paper hover:no-underline">{mine}</Link>
                   {user.role === "admin" && <Link href="/admin" className="block rounded-lg px-2 py-1.5 text-ink hover:bg-paper hover:no-underline">Admin panel</Link>}
                   {user.auth_provider === "google" ? (
-                    <p className="px-2 py-1.5 text-xs text-muted">You sign in with Google, so there is no password to change.</p>
+                    <>
+                      <button onClick={() => (setp ? setSetp(0) : sendSetCode())} disabled={busy} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-paper">
+                        Set a password <span className="text-xs text-muted">(to also log in with email)</span>
+                      </button>
+                      {setp === 2 && (
+                        <form onSubmit={finishSet} className="space-y-2 px-2 pb-2 pt-1">
+                          <p className="text-xs text-muted">We emailed a 6-digit code to {user.email}.</p>
+                          <input className="input py-2 text-center font-mono tracking-[0.4em]" inputMode="numeric" maxLength={6} placeholder="------"
+                            value={sc.code} onChange={(e) => setSc({ ...sc, code: e.target.value.replace(/\D/g, "").slice(0, 6) })} />
+                          <PasswordField className="py-2 text-sm" placeholder="New password" autoComplete="new-password" checks
+                            value={sc.pw} onChange={(v) => setSc({ ...sc, pw: v })} />
+                          <button className="btn w-full py-2" disabled={busy || sc.code.length !== 6 || !passwordOk(sc.pw)}>{busy ? "Saving..." : "Set password"}</button>
+                        </form>
+                      )}
+                    </>
                   ) : (
                     <button onClick={() => { setPw(!pw); setMsg(null); }} className="block w-full rounded-lg px-2 py-1.5 text-left hover:bg-paper">Change password</button>
                   )}

@@ -143,6 +143,14 @@ def password_problem(p: str) -> str | None:
     return None
 
 
+def _latest_code(s, email: str, purpose: str):
+    for c in s.scalars(select(EmailCode).where(EmailCode.email == email, EmailCode.used == False)  # noqa: E712
+                       .order_by(desc(EmailCode.id)).limit(10)).all():
+        if (c.payload or {}).get("purpose", "register") == purpose:
+            return c
+    return None
+
+
 def log_event(user_id: int | None, kind: str, method: str | None = None):
     """Best effort: activity logging must never block a login."""
     try:
@@ -181,7 +189,7 @@ def register(body: Register):
         code = f"{secrets.randbelow(1000000):06d}"
         acct = _acct(body.account_type)
         s.add(EmailCode(email=email, code_hash=_code_hash(email, code), expires_at=now + timedelta(minutes=10),
-                        payload={"name": body.name.strip()[:200], "account_type": acct,
+                        payload={"purpose": "register", "name": body.name.strip()[:200], "account_type": acct,
                                  "organisation": (body.organisation or "").strip()[:200] or None if acct == "business" else None,
                                  "password_hash": pipeline.hash_pw(body.password)}))
         s.commit()
@@ -211,8 +219,7 @@ def verify_code(body: VerifyIn):
     email = body.email.lower().strip()
     code = re.sub(r"\D", "", body.code or "")
     with SessionLocal() as s:
-        c = s.scalar(select(EmailCode).where(EmailCode.email == email, EmailCode.used == False)  # noqa: E712
-                     .order_by(desc(EmailCode.id)).limit(1))
+        c = _latest_code(s, email, "register")
         if not c or c.expires_at < utcnow():
             raise HTTPException(400, "This code has expired. Ask for a new one.")
         if c.attempts >= 5:
@@ -244,6 +251,8 @@ def login(body: Login):
     if not u or not bcrypt.checkpw(body.password.encode(), u.password_hash.encode()):
         if u:
             log_event(u.id, "login_failed", "password")
+        if u and (u.auth_provider or "") == "google":
+            raise HTTPException(401, "This account uses Google sign-in. Use Continue with Google, or tap Forgot password to set a password.")
         raise HTTPException(401, "Wrong email or password")
     log_event(u.id, "login", "password")
     return {"token": make_token(u), "user": user_json(u)}
@@ -267,6 +276,82 @@ def google_login(body: GoogleIn):
             s.add(u)
             s.commit()
     log_event(u.id, "signup" if new else "login", "google")
+    return {"token": make_token(u), "user": user_json(u)}
+
+
+class ResetStart(BaseModel):
+    email: EmailStr
+
+
+class ResetFinish(BaseModel):
+    email: EmailStr
+    code: str
+    new: str
+
+
+@app.post("/api/auth/reset/start")
+def reset_start(body: ResetStart):
+    """Forgot password, or a Google user setting a password: email a 6-digit code.
+    Answers the same whether or not the email has an account, so nobody can probe for accounts."""
+    import secrets
+    from pipeline.alerts import send_email
+    email = body.email.lower().strip()
+    now = utcnow()
+    with SessionLocal() as s:
+        u = s.scalar(select(User).where(User.email == email))
+        if not u:
+            return {"sent": True, "email": email}
+        recent = s.scalars(select(EmailCode).where(EmailCode.email == email,
+                                                  EmailCode.created_at > now - timedelta(hours=1))).all()
+        if any(c.created_at > now - timedelta(seconds=45) for c in recent):
+            raise HTTPException(429, "A code was just sent. Please wait a moment before asking again.")
+        if len(recent) >= 5:
+            raise HTTPException(429, "Too many codes for this email. Try again in an hour.")
+        code = f"{secrets.randbelow(1000000):06d}"
+        s.add(EmailCode(email=email, code_hash=_code_hash(email, code), expires_at=now + timedelta(minutes=10),
+                        payload={"purpose": "reset"}))
+        s.commit()
+        name = u.name
+    status = send_email(email, f"{code} is your Medi-Flaw password code", f"""Hello {name},
+
+Use this code to set a new Medi-Flaw password:
+
+    {code}
+
+It works for 10 minutes. If you did not ask for this, ignore this email; your password has not changed.
+
+Medi-Flaw""")
+    if status != "sent":
+        raise HTTPException(503, "We could not send the code right now. Please try again in a minute.")
+    return {"sent": True, "email": email}
+
+
+@app.post("/api/auth/reset/finish")
+def reset_finish(body: ResetFinish):
+    email = body.email.lower().strip()
+    code = re.sub(r"\D", "", body.code or "")
+    if password_problem(body.new):
+        raise HTTPException(400, password_problem(body.new))
+    with SessionLocal() as s:
+        c = _latest_code(s, email, "reset")
+        if not c or c.expires_at < utcnow():
+            raise HTTPException(400, "This code has expired. Ask for a new one.")
+        if c.attempts >= 5:
+            raise HTTPException(429, "Too many wrong tries. Ask for a new code.")
+        if len(code) != 6 or _code_hash(email, code) != c.code_hash:
+            c.attempts += 1
+            s.commit()
+            left = 5 - c.attempts
+            raise HTTPException(400, f"Wrong code. {left} {'try' if left == 1 else 'tries'} left." if left else "Too many wrong tries. Ask for a new code.")
+        u = s.scalar(select(User).where(User.email == email))
+        if not u:
+            raise HTTPException(400, "This code has expired. Ask for a new one.")
+        u.password_hash = pipeline.hash_pw(body.new)
+        if (u.auth_provider or "password") == "google":
+            u.auth_provider = "google+password"
+        c.used = True
+        s.commit()
+    log_event(u.id, "password_reset", "email code")
     return {"token": make_token(u), "user": user_json(u)}
 
 
@@ -294,7 +379,7 @@ def change_password(body: PasswordIn, u: User = Depends(current_user)):
     with SessionLocal() as s:
         x = s.get(User, u.id)
         if (x.auth_provider or "password") == "google":
-            raise HTTPException(400, "You sign in with Google, so there is no password to change")
+            raise HTTPException(400, "You sign in with Google. Use Set a password to add one.")
         if not bcrypt.checkpw(body.current.encode(), x.password_hash.encode()):
             raise HTTPException(400, "Your current password is wrong")
         x.password_hash = pipeline.hash_pw(body.new)

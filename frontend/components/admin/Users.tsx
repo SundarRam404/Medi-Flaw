@@ -6,7 +6,7 @@ import { Loading, ErrorNote, Danger } from "@/components/ui";
 import Avatar from "@/components/Avatar";
 
 const EVENT: Record<string, string> = {
-  signup: "Signed up", login: "Logged in", logout: "Logged out", login_failed: "Wrong password", password_changed: "Changed password",
+  signup: "Signed up", login: "Logged in", logout: "Logged out", login_failed: "Wrong password", password_changed: "Changed password", password_reset: "Set password with email code",
 };
 
 function ago(d?: string | null) {
@@ -88,7 +88,7 @@ export default function Users() {
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-3 py-2.5">{u.account_type === "personal" ? "Personal" : "Pharmacy"}{u.organisation && <div className="text-xs text-muted">{u.organisation}</div>}</td>
-                  <td className="px-3 py-2.5">{u.auth_provider === "google" ? "Google" : "Email"}</td>
+                  <td className="px-3 py-2.5">{u.auth_provider === "google" ? "Google" : u.auth_provider === "google+password" ? "Google + email" : "Email"}</td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-muted">{ago(u.joined)}</td>
                   <td className="whitespace-nowrap px-3 py-2.5">{ago(u.last_login)}</td>
                   <td className="whitespace-nowrap px-3 py-2.5 text-muted">{ago(u.last_logout)}</td>
@@ -165,7 +165,7 @@ function Detail({ d }: { d: any }) {
           <div className="mb-2 font-medium">Account</div>
           <dl className="space-y-1 text-xs">
             <div className="flex justify-between gap-2"><dt className="text-muted">Joined</dt><dd>{dateTime(u.joined)}</dd></div>
-            <div className="flex justify-between gap-2"><dt className="text-muted">Sign-in</dt><dd>{u.auth_provider === "google" ? "Google" : "Email + password"}</dd></div>
+            <div className="flex justify-between gap-2"><dt className="text-muted">Sign-in</dt><dd>{u.auth_provider === "google" ? "Google" : u.auth_provider === "google+password" ? "Google or email" : "Email + password"}</dd></div>
             <div className="flex justify-between gap-2"><dt className="text-muted">Email alerts</dt><dd>{u.email_alerts ? "On" : "Off"}</dd></div>
             {u.extra_emails?.length > 0 && <div><dt className="text-muted">Staff emails</dt><dd>{u.extra_emails.join(", ")}</dd></div>}
           </dl>

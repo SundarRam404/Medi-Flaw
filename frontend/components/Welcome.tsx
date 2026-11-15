@@ -41,6 +41,8 @@ export default function Welcome() {
   const [pending, setPending] = useState<string | null>(null); // email waiting for its code
   const [code, setCode] = useState("");
   const [note, setNote] = useState("");
+  const [reset, setReset] = useState<null | "email" | "code">(null); // forgot password steps
+  const [rpw, setRpw] = useState("");
   const gBox = useRef<HTMLDivElement>(null);
   const kindRef = useRef(kind);
   kindRef.current = kind;
@@ -108,6 +110,24 @@ export default function Welcome() {
     } catch (e: any) { setErr(e.message); }
   }
 
+  async function resetSend(e?: React.FormEvent) {
+    e?.preventDefault();
+    setBusy(true); setErr(""); setNote("");
+    try {
+      await api("/api/auth/reset/start", { method: "POST", body: JSON.stringify({ email: f.email }) });
+      if (reset === "code") setNote("New code sent."); else { setReset("code"); setCode(""); setRpw(""); }
+    } catch (e: any) { setErr(e.message); }
+    setBusy(false);
+  }
+
+  async function resetFinish(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true); setErr("");
+    try { done(await api("/api/auth/reset/finish", { method: "POST", body: JSON.stringify({ email: f.email, code, new: rpw }) })); }
+    catch (e: any) { setErr(e.message); }
+    setBusy(false);
+  }
+
   function guest() {
     setGuest(true);
     router.push(next && !next.startsWith("/watchlist") && !next.startsWith("/admin") ? next : "/");
@@ -119,7 +139,33 @@ export default function Welcome() {
       <div className="relative w-full max-w-[400px] rounded-3xl border border-white/70 bg-white/85 p-6 shadow-soft backdrop-blur-xl sm:p-7">
         <Logo size={22} />
         <p className="mt-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-brand">Making Medicine Quality Transparent</p>
-        {pending ? (
+        {reset ? (
+          <>
+            <h1 className="h-display mt-5 text-[34px]">{reset === "email" ? "Forgot password" : "Set a new password"}</h1>
+            {reset === "email" ? (
+              <form onSubmit={resetSend} className="mt-4 space-y-2.5">
+                <p className="text-sm text-muted">Enter your email. We will send a 6-digit code. This also works if you signed up with Google and want a password.</p>
+                <input className="input py-2" type="email" required placeholder="Email" value={f.email} onChange={set("email")} autoComplete="email" />
+                {err && <p className="rounded-xl bg-bad-light px-3 py-2 text-sm text-bad">{err}</p>}
+                <button className="btn w-full py-2.5" disabled={busy}>{busy ? "Sending..." : "Send code"}</button>
+              </form>
+            ) : (
+              <form onSubmit={resetFinish} className="mt-4 space-y-2.5">
+                <p className="text-sm text-muted">If <b className="font-medium text-ink">{f.email}</b> has an account, a code is on its way.</p>
+                <input className="input py-3 text-center font-mono text-2xl tracking-[0.5em]" inputMode="numeric" autoComplete="one-time-code"
+                  maxLength={6} placeholder="------" value={code} autoFocus onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} />
+                <PasswordField className="py-2" value={rpw} onChange={setRpw} checks placeholder="New password" autoComplete="new-password" />
+                {err && <p className="rounded-xl bg-bad-light px-3 py-2 text-sm text-bad">{err}</p>}
+                {note && <p className="rounded-xl bg-ok-light px-3 py-2 text-sm text-ok">{note}</p>}
+                <button className="btn w-full py-2.5" disabled={busy || code.length !== 6 || !passwordOk(rpw)}>{busy ? "Saving..." : "Set password and log in"}</button>
+                <p className="text-center text-sm text-muted">No email? Check spam, or <button type="button" className="font-medium text-brand hover:underline" onClick={() => resetSend()}>send a new code</button></p>
+              </form>
+            )}
+            <p className="mt-3 text-center text-sm">
+              <button className="text-muted hover:text-ink" onClick={() => { setReset(null); setErr(""); setNote(""); }}>&larr; Back to log in</button>
+            </p>
+          </>
+        ) : pending ? (
           <>
             <h1 className="h-display mt-5 text-[34px]">Check your email</h1>
             <p className="mt-1 text-sm text-muted">We sent a 6-digit code to <b className="font-medium text-ink">{pending}</b>. It works for 10 minutes.</p>
@@ -170,6 +216,11 @@ export default function Welcome() {
           <input className="input py-2" type="email" required placeholder="Email" value={f.email} onChange={set("email")} autoComplete="email" />
           <PasswordField className="py-2" value={f.password} onChange={(v) => setF({ ...f, password: v })} checks={mode === "register"}
             placeholder={mode === "register" ? "Create a password" : "Password"} autoComplete={mode === "login" ? "current-password" : "new-password"} />
+          {mode === "login" && (
+            <div className="-mt-1 text-right">
+              <button type="button" className="text-xs text-muted hover:text-brand" onClick={() => { setReset("email"); setErr(""); }}>Forgot password?</button>
+            </div>
+          )}
           {err && <p className="rounded-xl bg-bad-light px-3 py-2 text-sm text-bad">{err}</p>}
           <button className="btn w-full py-2.5" disabled={busy || (mode === "register" && !passwordOk(f.password))}>{busy ? "Please wait..." : mode === "login" ? "Log in" : "Create account"}</button>
         </form>
