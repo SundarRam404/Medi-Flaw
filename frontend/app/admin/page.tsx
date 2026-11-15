@@ -75,7 +75,7 @@ export default function Admin() {
         {err && <div className="mt-3"><ErrorNote msg={err} /></div>}
       </Box>
 
-      <div className="mt-6 flex gap-1 border-b border-line">
+      <div className="mt-8 flex gap-1 border-b-2 border-ink">
         <button className={`tab ${tab === "runs" ? "tab-on" : ""}`} onClick={() => setTab("runs")}>Run history</button>
         <button className={`tab ${tab === "outbox" ? "tab-on" : ""}`} onClick={() => setTab("outbox")}>Alert emails {alerts ? `(${alerts.length})` : ""}</button>
         <button className={`tab ${tab === "model" ? "tab-on" : ""}`} onClick={() => setTab("model")}>Model results</button>
@@ -84,7 +84,7 @@ export default function Admin() {
       {tab === "runs" && (
         <div className="mt-4 space-y-3">
           {!runs ? <Loading /> : runs.items.map((r: any) => (
-            <div key={r.id} className="rounded-md border border-line bg-white">
+            <div key={r.id} className="card">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2 text-sm">
                 <span><b>Run #{r.id}</b> &middot; {r.trigger} &middot; {dateTime(r.started_at)}</span>
                 <span className={r.status === "done" ? "text-ok" : r.status === "failed" ? "text-bad" : "text-warn"}>{r.status}</span>
@@ -149,11 +149,11 @@ export default function Admin() {
                   </tbody>
                 </table>
                 <p className="mt-2 text-xs text-muted">Simple rule: {m.baseline_rule}. Share of companies that did fail again: {m.positive_rate_test}.</p>
-                <h3 className="mb-2 mt-4 text-sm font-semibold">What the model relies on most</h3>
+                <h3 className="label mb-2 mt-4 text-ink">What the model relies on most</h3>
                 {m.importance.slice(0, 8).map((x: any) => (
                   <div key={x.feature} className="flex items-center gap-2 text-xs">
                     <span className="w-52 shrink-0 text-muted">{x.feature}</span>
-                    <span className="h-2 rounded-sm bg-brand/70" style={{ width: `${x.value * 250}px` }} />
+                    <span className="h-2 rounded-sm bg-brand" style={{ width: `${x.value * 250}px` }} />
                   </div>
                 ))}
               </>

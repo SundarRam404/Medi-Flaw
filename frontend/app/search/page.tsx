@@ -31,8 +31,8 @@ function Results() {
         <div className="mt-6 space-y-6">
           {d.companies.length > 0 && (
             <div>
-              <h2 className="mb-2 font-semibold">Companies</h2>
-              <div className="rounded-md border border-line bg-white">
+              <h2 className="mb-3 border-b-4 border-ink pb-2 text-xl font-extrabold uppercase tracking-tight">Companies</h2>
+              <div className="card">
                 <Table head={["Company", "State", "Failed batches", "Risk"]}>
                   {d.companies.map((c: any) => (
                     <tr key={c.id}>
@@ -47,11 +47,11 @@ function Results() {
             </div>
           )}
           <div>
-            <h2 className="mb-2 font-semibold">Failed batches {d.records.length === 50 ? "(first 50)" : `(${d.records.length})`}</h2>
+            <h2 className="mb-3 border-b-4 border-ink pb-2 text-xl font-extrabold uppercase tracking-tight">Failed batches {d.records.length === 50 ? "(first 50)" : `(${d.records.length})`}</h2>
             {d.records.length === 0 ? (
               <p className="text-muted">No failed batches match "{q}".</p>
             ) : (
-              <div className="rounded-md border border-line bg-white">
+              <div className="card">
                 <Table head={["Batch", "Medicine", "Company", "List", "Failed test", "Danger"]}>
                   {d.records.map((r: any) => (
                     <tr key={r.id}>

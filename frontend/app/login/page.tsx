@@ -27,11 +27,12 @@ function LoginForm() {
 
   return (
     <div className="mx-auto max-w-sm">
-      <div className="mb-4 flex gap-1 border-b border-line">
+      <h1 className="h-display mb-6 text-4xl">{mode === "login" ? "Welcome back" : "Create account"}</h1>
+      <div className="mb-4 flex gap-1 border-b-2 border-ink">
         <button className={`tab ${mode === "login" ? "tab-on" : ""}`} onClick={() => setMode("login")}>Log in</button>
         <button className={`tab ${mode === "register" ? "tab-on" : ""}`} onClick={() => setMode("register")}>Create account</button>
       </div>
-      <form onSubmit={submit} className="space-y-3 rounded-md border border-line bg-white p-5">
+      <form onSubmit={submit} className="space-y-3 card p-5">
         {mode === "register" && (
           <>
             <label className="block text-sm">Your name<input className="input mt-1" required value={f.name} onChange={set("name")} /></label>

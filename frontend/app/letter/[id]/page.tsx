@@ -21,7 +21,7 @@ export default function Letter({ params }: { params: { id: string } }) {
         </div>
       </div>
       <p className="no-print mb-3 text-sm text-muted">Fill in the blanks, sign, and send it with the returned stock.</p>
-      <pre className="whitespace-pre-wrap rounded-md border border-line bg-white p-8 font-mono text-sm leading-relaxed">{d.text}</pre>
+      <pre className="whitespace-pre-wrap card p-8 font-mono text-sm leading-relaxed">{d.text}</pre>
     </div>
   );
 }

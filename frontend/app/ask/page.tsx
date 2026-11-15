@@ -85,7 +85,7 @@ export default function Ask() {
       </form>
       <div className="mt-3 flex flex-wrap gap-2">
         {EXAMPLES.map((e) => (
-          <button key={e} className="rounded-full border border-line bg-white px-3 py-1 text-xs text-muted hover:text-ink"
+          <button key={e} className="chip"
             onClick={() => { setQ(e); send(e); }}>{e}</button>
         ))}
       </div>
@@ -93,12 +93,12 @@ export default function Ask() {
       {err && <div className="mt-4"><ErrorNote msg={err} /></div>}
 
       {res && (
-        <div className="mt-6 rounded-md border border-line bg-white">
-          <div className="border-b border-line px-5 py-3 text-sm text-muted">{asked}</div>
+        <div className="mt-6 card">
+          <div className="border-b-2 border-ink bg-ink px-5 py-3 text-sm font-semibold text-white">{asked}</div>
           <div className={`px-5 py-4 ${res.refused ? "text-muted" : ""}`}><Answer text={res.answer} /></div>
           {res.sources.length > 0 && (
             <div className="border-t border-line px-5 py-3">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Sources</h3>
+              <h3 className="label mb-2 text-ink">Sources</h3>
               <ul className="space-y-2 text-sm">
                 {res.sources.map((s: any) => {
                   const href = srcLink(s);

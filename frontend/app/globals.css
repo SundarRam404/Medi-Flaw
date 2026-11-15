@@ -2,19 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Funnel Display, self-hosted (no Google request) */
+@font-face { font-family: 'Funnel Display'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/funnel-display-latin-400-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Funnel Display'; font-style: normal; font-weight: 500; font-display: swap; src: url('/fonts/funnel-display-latin-500-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Funnel Display'; font-style: normal; font-weight: 600; font-display: swap; src: url('/fonts/funnel-display-latin-600-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Funnel Display'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/funnel-display-latin-700-normal.woff2') format('woff2'); }
+@font-face { font-family: 'Funnel Display'; font-style: normal; font-weight: 800; font-display: swap; src: url('/fonts/funnel-display-latin-800-normal.woff2') format('woff2'); }
+
 html { -webkit-text-size-adjust: 100%; }
-body { @apply bg-paper text-ink antialiased; }
-a { @apply text-brand; }
-a:hover { text-decoration: underline; }
+body { @apply bg-white text-ink antialiased; font-feature-settings: "tnum" 1; }
+a { @apply text-ink underline decoration-brand decoration-2 underline-offset-[3px]; }
+a:hover { @apply text-brand; }
+::selection { background: #E10600; color: #fff; }
 
 @layer components {
-  .input { @apply w-full rounded-md border border-line bg-white px-3 py-2 text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/15; }
-  .btn { @apply inline-flex items-center justify-center rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-50; }
+  /* blocks */
+  .card { @apply border-2 border-ink bg-white; }
+  .h-display { @apply font-extrabold uppercase leading-[0.95] tracking-[-0.02em]; }
+  .label { @apply text-[11px] font-bold uppercase tracking-[0.08em] text-muted; }
+
+  /* form */
+  .input { @apply w-full border-2 border-ink bg-white px-3 py-2 text-ink outline-none placeholder:text-[#8a8a8a] focus:border-brand; }
+  .btn { @apply inline-flex items-center justify-center border-2 border-brand bg-brand px-4 py-2 text-sm font-bold uppercase tracking-wide text-white no-underline hover:border-ink hover:bg-ink hover:text-white disabled:opacity-50; }
   .btn:hover { text-decoration: none; }
-  .btn-light { @apply inline-flex items-center justify-center rounded-md border border-line bg-white px-3 py-1.5 text-sm text-ink hover:bg-paper disabled:opacity-40; }
+  .btn-light { @apply inline-flex items-center justify-center border-2 border-ink bg-white px-3 py-1.5 text-sm font-bold uppercase tracking-wide text-ink no-underline hover:bg-ink hover:text-white disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-ink; }
   .btn-light:hover { text-decoration: none; }
-  .tab { @apply border-b-2 border-transparent px-3 py-2 text-sm text-muted hover:text-ink; }
-  .tab-on { @apply border-brand font-medium text-ink; }
+  .tab { @apply -mb-[2px] border-b-4 border-transparent px-3 py-2 text-sm font-bold uppercase tracking-wide text-muted hover:text-ink; }
+  .tab-on { @apply border-brand text-ink; }
+  .chip { @apply border-2 border-ink bg-white px-3 py-1 text-xs font-semibold text-ink hover:bg-ink hover:text-white; }
 }
 
 @media print {

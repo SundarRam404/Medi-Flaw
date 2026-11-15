@@ -150,7 +150,7 @@ export default function MyMedicines() {
   if (user === undefined) return <Loading />;
   if (!user) return (
     <div className="max-w-xl">
-      <h1 className="text-2xl font-semibold">My medicines</h1>
+      <h1 className="h-display text-4xl md:text-5xl">My medicines</h1>
       <p className="mt-1 text-muted">Keep a list of the batches you buy. Every new CDSCO list is checked against it, and you are told if any batch fails.</p>
       <Link href="/login?next=/watchlist" className="btn mt-4">Log in or create an account</Link>
     </div>
@@ -160,16 +160,16 @@ export default function MyMedicines() {
     <div>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold">My medicines</h1>
+          <h1 className="h-display text-4xl md:text-5xl">My medicines</h1>
           <p className="mt-1 text-muted">{settings?.organisation || user.name} &middot; checked against every new CDSCO list</p>
         </div>
         {settings && (
-          <div className="rounded-md border border-line bg-white px-4 py-3 text-sm">
+          <div className="card px-4 py-3 text-sm">
             <div className="flex items-center gap-3">
               <span>Email alerts</span>
               <button onClick={toggleEmail} role="switch" aria-checked={settings.email_alerts}
-                className={`relative h-6 w-11 rounded-full transition ${settings.email_alerts ? "bg-brand" : "bg-line"}`}>
-                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${settings.email_alerts ? "left-[22px]" : "left-0.5"}`} />
+                className={`relative h-6 w-11 border-2 border-ink transition ${settings.email_alerts ? "bg-brand" : "bg-white"}`}>
+                <span className={`absolute top-[1px] h-[18px] w-[18px] bg-ink transition ${settings.email_alerts ? "left-[21px] bg-white" : "left-[1px]"}`} />
               </button>
               <span className="text-muted">{settings.email_alerts ? "On" : "Off"}</span>
             </div>
@@ -190,7 +190,7 @@ export default function MyMedicines() {
       </div>
 
       <Box className="mt-4" title="Add medicines">
-        <div className="mb-4 flex flex-wrap gap-1 border-b border-line">
+        <div className="mb-4 flex flex-wrap gap-1 border-b-2 border-ink">
           {([["one", "One batch"], ["csv", "CSV file"], ["pdf", "Invoice PDF"], ["photo", "Invoice photo"]] as [Tab, string][]).map(([k, l]) => (
             <button key={k} className={`tab ${tab === k ? "tab-on" : ""}`} onClick={() => { setTab(k); setPreview(null); setErr(""); setMsg(""); }}>{l}</button>
           ))}
@@ -231,7 +231,7 @@ export default function MyMedicines() {
         {msg && <p className="mt-3 text-sm text-ok">{msg}</p>}
 
         {preview && preview.items.length > 0 && (
-          <div className="mt-4 rounded-md border border-line">
+          <div className="mt-4 border-2 border-ink">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-paper px-3 py-2 text-sm">
               <span>Found {preview.items.length} medicines (read by {preview.read_by}). Untick any that are wrong.</span>
               <button className="btn" onClick={addPicked}>Add {Object.values(picked).filter(Boolean).length} medicines</button>
@@ -337,11 +337,11 @@ export default function MyMedicines() {
 }
 
 function Card({ label, value, tone }: { label: string; value: number; tone?: "bad" | "warn" }) {
-  const c = tone === "bad" ? "text-bad" : tone === "warn" ? "text-warn" : "text-ink";
+  const c = tone === "bad" ? "text-brand" : tone === "warn" ? "text-warn" : "text-ink";
   return (
-    <div className="rounded-md border border-line bg-white px-4 py-3">
-      <div className="text-xs text-muted">{label}</div>
-      <div className={`mt-1 text-2xl font-semibold tabular-nums ${c}`}>{value}</div>
+    <div className="card px-4 py-3">
+      <div className="label">{label}</div>
+      <div className={`mt-1 text-3xl font-extrabold tracking-[-0.02em] tabular-nums ${c}`}>{value}</div>
     </div>
   );
 }

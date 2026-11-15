@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
 import { api, month, fmt } from "@/lib/api";
-import { Box, PageTitle, Stat, Table, Td, Band, Loading, ErrorNote } from "@/components/ui";
+import { C, Box, PageTitle, Stat, Table, Td, Band, Loading, ErrorNote } from "@/components/ui";
 
 export default function Reports() {
   const [d, setD] = useState<any>(null);
@@ -28,11 +28,11 @@ export default function Reports() {
         <div className="h-64">
           <ResponsiveContainer>
             <LineChart data={d.per_month}>
-              <CartesianGrid stroke="#eceef0" vertical={false} />
+              <CartesianGrid stroke={C.grid} vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 11 }} interval={5} />
               <YAxis tick={{ fontSize: 12 }} width={35} />
               <Tooltip labelFormatter={(m) => month(m as string, true)} />
-              <Line type="monotone" dataKey="count" name="Failed batches" stroke="#0f5c4c" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="count" name="Failed batches" stroke={C.red} strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -43,13 +43,13 @@ export default function Reports() {
           <div className="h-64">
             <ResponsiveContainer>
               <BarChart data={d.per_year}>
-                <CartesianGrid stroke="#eceef0" vertical={false} />
+                <CartesianGrid stroke={C.grid} vertical={false} />
                 <XAxis dataKey="year" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} width={35} />
                 <Tooltip />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="count" name="All" fill="#0f5c4c" />
-                <Bar dataKey="high" name="HIGH danger" fill="#b3261e" />
+                <Bar dataKey="count" name="All" fill={C.ink} />
+                <Bar dataKey="high" name="HIGH danger" fill={C.red} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -61,7 +61,7 @@ export default function Reports() {
                 <XAxis type="number" tick={{ fontSize: 12 }} />
                 <YAxis type="category" dataKey="category" tick={{ fontSize: 11 }} width={110} interval={0} />
                 <Tooltip />
-                <Bar dataKey="count" name="Failed batches" fill="#0f5c4c" />
+                <Bar dataKey="count" name="Failed batches" fill={C.red} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -73,7 +73,7 @@ export default function Reports() {
                 <XAxis type="number" tick={{ fontSize: 12 }} />
                 <YAxis type="category" dataKey="state" tick={{ fontSize: 11 }} width={120} interval={0} />
                 <Tooltip />
-                <Bar dataKey="count" name="Failed batches" fill="#4a7d72" />
+                <Bar dataKey="count" name="Failed batches" fill={C.ink} />
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -27,14 +27,14 @@ export default function BatchPage({ params }: { params: { batch: string } }) {
 
   return (
     <div className="max-w-4xl">
-      <Link href="/" className="text-sm">&larr; New search</Link>
-      <p className="mt-4 text-sm text-muted">Batch number</p>
-      <h1 className="font-mono text-3xl font-semibold">{batch}</h1>
+      <Link href="/" className="text-sm font-bold uppercase tracking-wide">&larr; New search</Link>
+      <p className="label mt-6">Batch number</p>
+      <h1 className="mt-1 break-all font-mono text-5xl font-bold tracking-tight">{batch}</h1>
 
       {!d.failed ? (
-        <div className="mt-6 rounded-md border border-ok/30 bg-ok-light p-5">
-          <p className="text-lg font-semibold text-ok">No failure on record</p>
-          <p className="mt-1 text-sm text-ink">
+        <div className="mt-6 border-2 border-ink bg-white p-6">
+          <p className="h-display text-3xl text-ok">No failure on record</p>
+          <p className="mt-2 max-w-2xl text-sm text-ink">
             This batch number is not in any CDSCO Not of Standard Quality list up to {month(d.checked_until, true)}.
             This does not prove the batch was tested. Most batches are never sampled.
           </p>
@@ -46,24 +46,24 @@ export default function BatchPage({ params }: { params: { batch: string } }) {
         </div>
       ) : (
         <>
-          <div className="mt-6 rounded-md border border-bad/30 bg-bad-light p-5">
-            <p className="text-lg font-semibold text-bad">
+          <div className="mt-6 border-2 border-brand bg-brand p-6 text-white">
+            <p className="h-display text-3xl md:text-4xl">
               Failed a quality test{d.records.length > 1 ? ` (${d.records.length} entries)` : ""}
             </p>
-            <p className="mt-1 text-sm text-ink">
+            <p className="mt-2 max-w-2xl text-sm text-white/90">
               This batch is listed by CDSCO as Not of Standard Quality. Shops should stop selling it and return it to the distributor.
             </p>
           </div>
 
           {d.records.map((r: any) => (
-            <div key={r.id} className="mt-4 rounded-md border border-line bg-white">
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-5 py-4">
+            <div key={r.id} className="card mt-4">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b-2 border-ink px-5 py-4">
                 <div>
-                  <h2 className="text-lg font-semibold">{r.drug_name}</h2>
+                  <h2 className="text-xl font-extrabold">{r.drug_name}</h2>
                   <p className="text-sm text-muted">CDSCO list of {month(r.report_month, true)}</p>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-muted">Danger level</div>
+                  <div className="label mb-1">Danger level</div>
                   <Danger level={r.danger} />
                 </div>
               </div>
@@ -77,7 +77,7 @@ export default function BatchPage({ params }: { params: { batch: string } }) {
               </dl>
               {r.findings?.length > 0 && (
                 <div className="border-t border-line bg-bad-light/50 px-5 py-3">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-bad">Test result</div>
+                  <div className="label text-brand">Test result</div>
                   <ul className="mt-1 space-y-0.5 text-sm font-medium text-ink">
                     {r.findings.map((x: string, i: number) => <li key={i}>{x}</li>)}
                   </ul>
@@ -88,7 +88,7 @@ export default function BatchPage({ params }: { params: { batch: string } }) {
               {r.company && (
                 <div className="border-t border-line bg-paper px-5 py-4 text-sm">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="font-medium">About {r.company.name}</span>
+                    <span className="font-extrabold uppercase tracking-wide">About {r.company.name}</span>
                     <Link href={`/companies/${r.company_id}`}>Full history</Link>
                   </div>
                   <div className="mt-2 grid gap-2 sm:grid-cols-3">
@@ -116,7 +116,7 @@ export default function BatchPage({ params }: { params: { batch: string } }) {
 function Row({ k, children }: { k: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs text-muted">{k}</dt>
+      <dt className="label">{k}</dt>
       <dd className="mt-0.5">{children}</dd>
     </div>
   );

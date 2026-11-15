@@ -62,7 +62,7 @@ export default function DataPage() {
               </tbody>
             </table>
           </div>
-          <h3 className="mb-2 mt-5 text-sm font-semibold">Changes made</h3>
+          <h3 className="label mb-2 mt-5 text-ink">Changes made</h3>
           <div className="grid gap-x-8 gap-y-1 text-sm sm:grid-cols-2">
             {sum.changes_by_rule.map((c: any, i: number) => (
               <div key={i} className="flex justify-between border-b border-line/60 py-1">
@@ -73,7 +73,7 @@ export default function DataPage() {
         </Box>
       )}
 
-      <div className="mt-6 flex gap-1 border-b border-line">
+      <div className="mt-8 flex gap-1 border-b-2 border-ink">
         <button className={`tab ${tab === "raw" ? "tab-on" : ""}`} onClick={() => show("raw")}>As published</button>
         <button className={`tab ${tab === "clean" ? "tab-on" : ""}`} onClick={() => show("clean")}>Cleaned</button>
         <button className={`tab ${tab === "changes" ? "tab-on" : ""}`} onClick={() => { setRawId(null); show("changes"); }}>Changes</button>
@@ -93,7 +93,7 @@ export default function DataPage() {
         )}
       </div>
 
-      <div className="mt-3 rounded-md border border-line bg-white p-2">
+      <div className="mt-3 card p-2">
         {!d ? <Loading /> : tab === "raw" ? (
           <>
             <Table head={["#", "List", "Medicine", "Batch", "Mfg", "Expiry", "Manufacturer (as written)", "Reason", "Source", "Lab", ""]}>

@@ -58,7 +58,7 @@ export default function Companies() {
       )}
       {err && <ErrorNote msg={err} />}
       {!d ? <Loading /> : (
-        <div className="rounded-md border border-line bg-white p-2">
+        <div className="card p-2">
           <Table head={["Company", "State", period === "all" ? "Failed batches" : "Failed in period", "Last failure", "Repeat score", "Risk (6 months)"]}>
             {d.items.map((c: any) => (
               <tr key={c.id}>

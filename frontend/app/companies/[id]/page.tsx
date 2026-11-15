@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { api, month } from "@/lib/api";
-import { Danger, Band, Box, Stat, Table, Td, BatchLink, Loading, ErrorNote } from "@/components/ui";
+import { C, Danger, Band, Box, Stat, Table, Td, BatchLink, Loading, ErrorNote } from "@/components/ui";
 
 export default function Company({ params }: { params: { id: string } }) {
   const [c, setC] = useState<any>(null);
@@ -16,7 +16,7 @@ export default function Company({ params }: { params: { id: string } }) {
   return (
     <div>
       <Link href="/companies" className="text-sm">&larr; All companies</Link>
-      <h1 className="mt-3 text-2xl font-semibold">{c.name}</h1>
+      <h1 className="h-display mt-4 text-4xl md:text-5xl">{c.name}</h1>
       <p className="text-muted">{c.state || "State not known"} &middot; failures from {month(c.first_month)} to {month(c.last_month)}</p>
       {c.aliases.length > 0 && <p className="mt-1 text-xs text-muted">Also written as: {c.aliases.join("; ")}</p>}
 
@@ -32,11 +32,11 @@ export default function Company({ params }: { params: { id: string } }) {
           <div className="h-56">
             <ResponsiveContainer>
               <BarChart data={c.by_year}>
-                <CartesianGrid stroke="#eceef0" vertical={false} />
+                <CartesianGrid stroke={C.grid} vertical={false} />
                 <XAxis dataKey="year" tick={{ fontSize: 12 }} />
                 <YAxis allowDecimals={false} tick={{ fontSize: 12 }} width={30} />
                 <Tooltip />
-                <Bar dataKey="count" name="Failed batches" fill="#0f5c4c" />
+                <Bar dataKey="count" name="Failed batches" fill={C.red} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -51,12 +51,12 @@ export default function Company({ params }: { params: { id: string } }) {
               </li>
             ))}
           </ul>
-          <h3 className="mb-2 mt-5 text-sm font-semibold">Failure types</h3>
+          <h3 className="label mb-2 mt-5 text-ink">Failure types</h3>
           <div className="space-y-1.5">
             {c.by_category.map((x: any) => (
               <div key={x.category} className="flex items-center gap-2 text-sm">
                 <span className="w-36 shrink-0 text-muted">{x.category}</span>
-                <span className="h-2.5 rounded-sm bg-brand/70" style={{ width: `${(x.count / maxCat) * 60}%` }} />
+                <span className="h-2.5 rounded-sm bg-brand" style={{ width: `${(x.count / maxCat) * 60}%` }} />
                 <span className="tabular-nums">{x.count}</span>
               </div>
             ))}

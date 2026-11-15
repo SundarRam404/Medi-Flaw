@@ -11,8 +11,8 @@ export default function Ack({ params }: { params: { token: string } }) {
   if (err) return <ErrorNote msg={err} />;
   if (!d) return <Loading />;
   return (
-    <div className="max-w-lg rounded-md border border-line bg-white p-6">
-      <h1 className="text-xl font-semibold">Thank you</h1>
+    <div className="card max-w-lg p-6">
+      <h1 className="h-display text-4xl">Thank you</h1>
       <p className="mt-2 text-muted">You have confirmed the alert for batch <b className="font-mono text-ink">{d.batch_no}</b> ({d.drug_name}). No reminder will be sent.</p>
       <Link href="/watchlist" className="btn mt-4">Go to my watchlist</Link>
     </div>
