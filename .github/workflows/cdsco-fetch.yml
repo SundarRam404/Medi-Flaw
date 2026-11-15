@@ -2,10 +2,13 @@ name: CDSCO daily fetch
 
 # CDSCO drops connections from the backend host, so the fetch runs here instead.
 # New rows go straight into the database; then the server is asked to process them.
+# Schedule is OFF: tested 15 Nov 2026, CDSCO drops connections from GitHub's servers too
+# (Errno 101, timeout), the same as from Render. CDSCO appears to accept Indian connections only.
+# Kept as a manual button to re-test, or to use with a self-hosted runner in India.
 on:
-  schedule:
-    - cron: "45 22 * * *"      # 04:15 IST every day, before the server's 05:00 run
-  workflow_dispatch:           # "Run workflow" button for testing
+  workflow_dispatch:           # "Run workflow" button
+  # schedule:
+  #   - cron: "45 22 * * *"    # 04:15 IST, re-enable if CDSCO starts accepting GitHub
 
 jobs:
   fetch:
