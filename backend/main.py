@@ -258,24 +258,171 @@ def login(body: Login):
     return {"token": make_token(u), "user": user_json(u)}
 
 
+# ---- one-time email codes, shared by every sign-in path
+def _send_code(email: str, purpose: str, name: str, why: str) -> None:
+    """Email a 6-digit code (10 min, max 5 tries) with the same anti-spam limits everywhere."""
+    import secrets
+    from pipeline.alerts import send_email
+    now = utcnow()
+    with SessionLocal() as s:
+        recent = s.scalars(select(EmailCode).where(EmailCode.email == email,
+                                                  EmailCode.created_at > now - timedelta(hours=1))).all()
+        if any(c.created_at > now - timedelta(seconds=30) for c in recent):
+            raise HTTPException(429, "A code was just sent. Please wait a moment before asking again.")
+        if len(recent) >= 8:
+            raise HTTPException(429, "Too many codes for this email. Try again in an hour.")
+        code = f"{secrets.randbelow(1000000):06d}"
+        s.add(EmailCode(email=email, code_hash=_code_hash(email, code), expires_at=now + timedelta(minutes=10),
+                        payload={"purpose": purpose}))
+        s.commit()
+    status = send_email(email, f"{code} is your Medi-Flaw code", f"""Hello {name},
+
+Your Medi-Flaw code to {why} is:
+
+    {code}
+
+It works for 10 minutes. If this was not you, ignore this email and nobody can get in without it.
+
+Medi-Flaw""")
+    if status != "sent":
+        raise HTTPException(503, "We could not send the code right now. Please try again in a minute.")
+
+
+def _use_code(email: str, purpose: str, code: str) -> None:
+    code = re.sub(r"\D", "", code or "")
+    with SessionLocal() as s:
+        c = _latest_code(s, email, purpose)
+        if not c or c.expires_at < utcnow():
+            raise HTTPException(400, "This code has expired. Ask for a new one.")
+        if c.attempts >= 5:
+            raise HTTPException(429, "Too many wrong tries. Ask for a new code.")
+        if len(code) != 6 or _code_hash(email, code) != c.code_hash:
+            c.attempts += 1
+            s.commit()
+            left = 5 - c.attempts
+            raise HTTPException(400, f"Wrong code. {left} {'try' if left == 1 else 'tries'} left." if left else "Too many wrong tries. Ask for a new code.")
+        c.used = True
+        s.commit()
+
+
+def _check_password(u: User, password: str) -> None:
+    if (u.auth_provider or "") == "google":
+        raise HTTPException(400, "You have not set a password yet. Use the email code, or Forgot password.")
+    if not bcrypt.checkpw((password or "").encode(), u.password_hash.encode()):
+        log_event(u.id, "login_failed", "password")
+        raise HTTPException(401, "Wrong password")
+
+
+# ---- email login: code by default, password if they prefer
+class EmailOnly(BaseModel):
+    email: EmailStr
+
+
+class CodeIn(BaseModel):
+    email: EmailStr
+    code: str
+
+
+@app.post("/api/auth/login/start")
+def login_start(body: EmailOnly):
+    """Emails a login code. Same answer whether or not the account exists."""
+    email = body.email.lower().strip()
+    with SessionLocal() as s:
+        u = s.scalar(select(User).where(User.email == email))
+    if u:
+        _send_code(email, "login", u.name, "log in")
+    return {"sent": True, "email": email}
+
+
+@app.post("/api/auth/login/code")
+def login_code(body: CodeIn):
+    email = body.email.lower().strip()
+    with SessionLocal() as s:
+        u = s.scalar(select(User).where(User.email == email))
+    if not u:
+        raise HTTPException(400, "This code has expired. Ask for a new one.")
+    _use_code(email, "login", body.code)
+    log_event(u.id, "login", "email code")
+    return {"token": make_token(u), "user": user_json(u)}
+
+
+# ---- Google: Google proves who you are, then a code (or your password) finishes the login
+def _google_ticket(g: dict, body: GoogleIn) -> str:
+    return jwt.encode({"purpose": "google", "email": g["email"].lower(), "name": (g.get("name") or "")[:200],
+                       "acct": _acct(body.account_type), "org": (body.organisation or "")[:200],
+                       "exp": utcnow() + timedelta(minutes=15)}, SECRET_KEY, algorithm="HS256")
+
+
+def _read_ticket(t: str) -> dict:
+    try:
+        d = jwt.decode(t, SECRET_KEY, algorithms=["HS256"])
+    except Exception:
+        raise HTTPException(400, "This sign-in took too long. Please press Continue with Google again.")
+    if d.get("purpose") != "google":
+        raise HTTPException(400, "Please press Continue with Google again.")
+    return d
+
+
 @app.post("/api/auth/google")
 def google_login(body: GoogleIn):
     g = verify_google(body.credential)
     email = g["email"].lower()
-    new = False
     with SessionLocal() as s:
         u = s.scalar(select(User).where(User.email == email))
-        if not u:
-            import secrets
-            new = True
-            acct = _acct(body.account_type)
-            u = User(email=email, name=(g.get("name") or email.split("@")[0])[:200],
-                     organisation=(body.organisation or None) if acct == "business" else None,
-                     account_type=acct, auth_provider="google", role="pharmacist",
-                     password_hash=pipeline.hash_pw(secrets.token_urlsafe(32)))
-            s.add(u)
-            s.commit()
-    log_event(u.id, "signup" if new else "login", "google")
+    if u:
+        _send_code(email, "google", u.name, "log in")
+        return {"step": "code", "email": email, "ticket": _google_ticket(g, body),
+                "has_password": (u.auth_provider or "password") != "google"}
+    _send_code(email, "google", g.get("name") or email.split("@")[0], "finish creating your account")
+    return {"step": "new", "email": email, "ticket": _google_ticket(g, body)}
+
+
+class TicketIn(BaseModel):
+    ticket: str
+
+
+@app.post("/api/auth/google/resend")
+def google_resend(body: TicketIn):
+    t = _read_ticket(body.ticket)
+    _send_code(t["email"], "google", t.get("name") or t["email"].split("@")[0], "log in")
+    return {"sent": True}
+
+
+class GoogleFinish(BaseModel):
+    ticket: str
+    code: str | None = None
+    password: str | None = None
+
+
+@app.post("/api/auth/google/finish")
+def google_finish(body: GoogleFinish):
+    t = _read_ticket(body.ticket)
+    email = t["email"]
+    with SessionLocal() as s:
+        u = s.scalar(select(User).where(User.email == email))
+    if u:  # returning user: code (default) or password
+        if body.password and not body.code:
+            _check_password(u, body.password)
+            log_event(u.id, "login", "google + password")
+        else:
+            _use_code(email, "google", body.code or "")
+            log_event(u.id, "login", "google + code")
+        return {"token": make_token(u), "user": user_json(u)}
+    # new account: code first, then the password they chose
+    if password_problem(body.password or ""):
+        raise HTTPException(400, password_problem(body.password or ""))
+    _use_code(email, "google", body.code or "")
+    acct = t.get("acct") or "business"
+    with SessionLocal() as s:
+        if s.scalar(select(User).where(User.email == email)):
+            raise HTTPException(400, "This email is already registered. Log in instead.")
+        u = User(email=email, name=t.get("name") or email.split("@")[0],
+                 organisation=(t.get("org") or None) if acct == "business" else None,
+                 account_type=acct, auth_provider="google+password", role="pharmacist",
+                 password_hash=pipeline.hash_pw(body.password))
+        s.add(u)
+        s.commit()
+    log_event(u.id, "signup", "google + code")
     return {"token": make_token(u), "user": user_json(u)}
 
 

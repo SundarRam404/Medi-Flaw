@@ -43,6 +43,11 @@ export default function Welcome() {
   const [note, setNote] = useState("");
   const [reset, setReset] = useState<null | "email" | "code">(null); // forgot password steps
   const [rpw, setRpw] = useState("");
+  // login: email code by default, password if they prefer
+  const [loginWith, setLoginWith] = useState<"code" | "password">("code");
+  type Step = { kind: "email-code" | "google-code" | "google-password" | "google-new"; email: string; ticket?: string; hasPassword?: boolean };
+  const [step, setStep] = useState<Step | null>(null);
+  const [spw, setSpw] = useState("");
   const gBox = useRef<HTMLDivElement>(null);
   const kindRef = useRef(kind);
   kindRef.current = kind;
@@ -67,8 +72,13 @@ export default function Welcome() {
         callback: async (resp: any) => {
           setBusy(true); setErr("");
           try {
-            done(await api("/api/auth/google", { method: "POST",
-              body: JSON.stringify({ credential: resp.credential, account_type: kindRef.current }) }));
+            const r = await api("/api/auth/google", { method: "POST",
+              body: JSON.stringify({ credential: resp.credential, account_type: kindRef.current }) });
+            if (r.token) done(r);
+            else {
+              setCode(""); setSpw(""); setNote("");
+              setStep({ kind: r.step === "new" ? "google-new" : "google-code", email: r.email, ticket: r.ticket, hasPassword: r.has_password });
+            }
           } catch (e: any) { setErr(e.message); }
           setBusy(false);
         },
@@ -84,11 +94,16 @@ export default function Welcome() {
     e.preventDefault();
     setBusy(true); setErr("");
     try {
-      const body = mode === "login"
-        ? { email: f.email, password: f.password }
-        : { ...f, organisation: kind === "business" ? f.organisation : null, account_type: kind };
-      const r = await api(`/api/auth/${mode}`, { method: "POST", body: JSON.stringify(body) });
-      if (r.verify) { setPending(r.email); setCode(""); setNote(""); } else done(r);
+      if (mode === "login" && loginWith === "code") {
+        const r = await api("/api/auth/login/start", { method: "POST", body: JSON.stringify({ email: f.email }) });
+        setCode(""); setNote(""); setStep({ kind: "email-code", email: r.email });
+      } else {
+        const body = mode === "login"
+          ? { email: f.email, password: f.password }
+          : { ...f, organisation: kind === "business" ? f.organisation : null, account_type: kind };
+        const r = await api(`/api/auth/${mode}`, { method: "POST", body: JSON.stringify(body) });
+        if (r.verify) { setPending(r.email); setCode(""); setNote(""); } else done(r);
+      }
     } catch (e: any) { setErr(e.message); }
     setBusy(false);
   }
@@ -128,6 +143,38 @@ export default function Welcome() {
     setBusy(false);
   }
 
+  async function finishStep(e: React.FormEvent) {
+    e.preventDefault();
+    if (!step) return;
+    setBusy(true); setErr("");
+    try {
+      if (step.kind === "email-code") {
+        done(await api("/api/auth/login/code", { method: "POST", body: JSON.stringify({ email: step.email, code }) }));
+      } else {
+        const body = step.kind === "google-password" ? { ticket: step.ticket, password: spw }
+          : step.kind === "google-new" ? { ticket: step.ticket, code, password: spw }
+          : { ticket: step.ticket, code };
+        done(await api("/api/auth/google/finish", { method: "POST", body: JSON.stringify(body) }));
+      }
+    } catch (e: any) { setErr(e.message); }
+    setBusy(false);
+  }
+
+  async function resendStep() {
+    if (!step) return;
+    setErr(""); setNote("");
+    try {
+      if (step.kind === "email-code") await api("/api/auth/login/start", { method: "POST", body: JSON.stringify({ email: step.email }) });
+      else await api("/api/auth/google/resend", { method: "POST", body: JSON.stringify({ ticket: step.ticket }) });
+      setNote("New code sent.");
+    } catch (e: any) { setErr(e.message); }
+  }
+
+  const codeBox = (
+    <input className="input py-3 text-center font-mono text-2xl tracking-[0.5em]" inputMode="numeric" autoComplete="one-time-code"
+      maxLength={6} placeholder="------" value={code} autoFocus onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} />
+  );
+
   function guest() {
     setGuest(true);
     router.push(next && !next.startsWith("/watchlist") && !next.startsWith("/admin") ? next : "/");
@@ -139,7 +186,48 @@ export default function Welcome() {
       <div className="relative w-full max-w-[400px] rounded-3xl border border-white/70 bg-white/85 p-6 shadow-soft backdrop-blur-xl sm:p-7">
         <Logo size={22} />
         <p className="mt-1.5 text-[11px] font-medium uppercase tracking-[0.14em] text-brand">Making Medicine Quality Transparent</p>
-        {reset ? (
+        {step ? (
+          <>
+            <h1 className="h-display mt-5 text-[34px]">{step.kind === "google-new" ? "Finish sign-up" : step.kind === "google-password" ? "Enter your password" : "Check your email"}</h1>
+            <p className="mt-1 text-sm text-muted">
+              {step.kind === "google-password" ? <>Google confirmed <b className="font-medium text-ink">{step.email}</b>. Now your Medi-Flaw password.</>
+                : step.kind === "email-code" ? <>If <b className="font-medium text-ink">{step.email}</b> has an account, a 6-digit code is on its way.</>
+                : <>We sent a 6-digit code to <b className="font-medium text-ink">{step.email}</b>. It works for 10 minutes.</>}
+            </p>
+            <form onSubmit={finishStep} className="mt-5 space-y-2.5">
+              {step.kind !== "google-password" && codeBox}
+              {step.kind === "google-new" && (
+                <PasswordField className="py-2" value={spw} onChange={setSpw} checks placeholder="Create a password" autoComplete="new-password" />
+              )}
+              {step.kind === "google-password" && (
+                <PasswordField className="py-2" value={spw} onChange={setSpw} placeholder="Password" autoComplete="current-password" />
+              )}
+              {err && <p className="rounded-xl bg-bad-light px-3 py-2 text-sm text-bad">{err}</p>}
+              {note && <p className="rounded-xl bg-ok-light px-3 py-2 text-sm text-ok">{note}</p>}
+              <button className="btn w-full py-2.5" disabled={busy
+                || (step.kind !== "google-password" && code.length !== 6)
+                || (step.kind === "google-new" && !passwordOk(spw))
+                || (step.kind === "google-password" && !spw)}>
+                {busy ? "Checking..." : step.kind === "google-new" ? "Create account" : "Log in"}
+              </button>
+            </form>
+            <div className="mt-3 space-y-1 text-center text-sm text-muted">
+              {step.kind !== "google-password" && (
+                <p>No email? Check spam, or <button className="font-medium text-brand hover:underline" onClick={resendStep}>send a new code</button></p>
+              )}
+              {step.kind === "google-code" && step.hasPassword && (
+                <p><button className="font-medium text-brand hover:underline" onClick={() => { setStep({ ...step, kind: "google-password" }); setErr(""); setNote(""); }}>Use password instead</button></p>
+              )}
+              {step.kind === "google-password" && (
+                <p><button className="font-medium text-brand hover:underline" onClick={() => { setStep({ ...step, kind: "google-code" }); setErr(""); }}>Use the email code instead</button></p>
+              )}
+              {step.kind === "email-code" && (
+                <p><button className="font-medium text-brand hover:underline" onClick={() => { setStep(null); setLoginWith("password"); setErr(""); }}>Use password instead</button></p>
+              )}
+              <p><button className="hover:text-ink" onClick={() => { setStep(null); setErr(""); setNote(""); }}>&larr; Back</button></p>
+            </div>
+          </>
+        ) : reset ? (
           <>
             <h1 className="h-display mt-5 text-[34px]">{reset === "email" ? "Forgot password" : "Set a new password"}</h1>
             {reset === "email" ? (
@@ -214,15 +302,22 @@ export default function Welcome() {
             </>
           )}
           <input className="input py-2" type="email" required placeholder="Email" value={f.email} onChange={set("email")} autoComplete="email" />
-          <PasswordField className="py-2" value={f.password} onChange={(v) => setF({ ...f, password: v })} checks={mode === "register"}
-            placeholder={mode === "register" ? "Create a password" : "Password"} autoComplete={mode === "login" ? "current-password" : "new-password"} />
+          {(mode === "register" || loginWith === "password") && (
+            <PasswordField className="py-2" value={f.password} onChange={(v) => setF({ ...f, password: v })} checks={mode === "register"}
+              placeholder={mode === "register" ? "Create a password" : "Password"} autoComplete={mode === "login" ? "current-password" : "new-password"} />
+          )}
           {mode === "login" && (
-            <div className="-mt-1 text-right">
-              <button type="button" className="text-xs text-muted hover:text-brand" onClick={() => { setReset("email"); setErr(""); }}>Forgot password?</button>
+            <div className="-mt-1 flex justify-between text-xs">
+              <button type="button" className="text-muted hover:text-brand" onClick={() => { setLoginWith(loginWith === "code" ? "password" : "code"); setErr(""); }}>
+                {loginWith === "code" ? "Use password instead" : "Use an email code instead"}
+              </button>
+              {loginWith === "password" && <button type="button" className="text-muted hover:text-brand" onClick={() => { setReset("email"); setErr(""); }}>Forgot password?</button>}
             </div>
           )}
           {err && <p className="rounded-xl bg-bad-light px-3 py-2 text-sm text-bad">{err}</p>}
-          <button className="btn w-full py-2.5" disabled={busy || (mode === "register" && !passwordOk(f.password))}>{busy ? "Please wait..." : mode === "login" ? "Log in" : "Create account"}</button>
+          <button className="btn w-full py-2.5" disabled={busy || (mode === "register" && !passwordOk(f.password))}>
+            {busy ? "Please wait..." : mode === "register" ? "Create account" : loginWith === "code" ? "Email me a code" : "Log in"}
+          </button>
         </form>
 
         <p className="mt-3 text-center text-sm text-muted">
