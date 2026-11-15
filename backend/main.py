@@ -325,12 +325,13 @@ class CodeIn(BaseModel):
 
 @app.post("/api/auth/login/start")
 def login_start(body: EmailOnly):
-    """Emails a login code. Same answer whether or not the account exists."""
+    """Emails a login code. Says clearly when there is no account, so nobody waits for a code that never comes."""
     email = body.email.lower().strip()
     with SessionLocal() as s:
         u = s.scalar(select(User).where(User.email == email))
-    if u:
-        _send_code(email, "login", u.name, "log in")
+    if not u:
+        raise HTTPException(404, "No account with this email yet. Create a free account first.")
+    _send_code(email, "login", u.name, "log in")
     return {"sent": True, "email": email}
 
 
@@ -447,7 +448,7 @@ def reset_start(body: ResetStart):
     with SessionLocal() as s:
         u = s.scalar(select(User).where(User.email == email))
         if not u:
-            return {"sent": True, "email": email}
+            raise HTTPException(404, "No account with this email yet. Create a free account first.")
         recent = s.scalars(select(EmailCode).where(EmailCode.email == email,
                                                   EmailCode.created_at > now - timedelta(hours=1))).all()
         if any(c.created_at > now - timedelta(seconds=45) for c in recent):

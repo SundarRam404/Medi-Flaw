@@ -191,7 +191,7 @@ export default function Welcome() {
             <h1 className="h-display mt-5 text-[34px]">{step.kind === "google-new" ? "Finish sign-up" : step.kind === "google-password" ? "Enter your password" : "Check your email"}</h1>
             <p className="mt-1 text-sm text-muted">
               {step.kind === "google-password" ? <>Google confirmed <b className="font-medium text-ink">{step.email}</b>. Now your Medi-Flaw password.</>
-                : step.kind === "email-code" ? <>If <b className="font-medium text-ink">{step.email}</b> has an account, a 6-digit code is on its way.</>
+                : step.kind === "email-code" ? <>We sent a 6-digit code to <b className="font-medium text-ink">{step.email}</b>. It works for 10 minutes.</>
                 : <>We sent a 6-digit code to <b className="font-medium text-ink">{step.email}</b>. It works for 10 minutes.</>}
             </p>
             <form onSubmit={finishStep} className="mt-5 space-y-2.5">
@@ -239,7 +239,7 @@ export default function Welcome() {
               </form>
             ) : (
               <form onSubmit={resetFinish} className="mt-4 space-y-2.5">
-                <p className="text-sm text-muted">If <b className="font-medium text-ink">{f.email}</b> has an account, a code is on its way.</p>
+                <p className="text-sm text-muted">We sent a 6-digit code to <b className="font-medium text-ink">{f.email}</b>.</p>
                 <input className="input py-3 text-center font-mono text-2xl tracking-[0.5em]" inputMode="numeric" autoComplete="one-time-code"
                   maxLength={6} placeholder="------" value={code} autoFocus onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} />
                 <PasswordField className="py-2" value={rpw} onChange={setRpw} checks placeholder="New password" autoComplete="new-password" />
@@ -314,7 +314,14 @@ export default function Welcome() {
               {loginWith === "password" && <button type="button" className="text-muted hover:text-brand" onClick={() => { setReset("email"); setErr(""); }}>Forgot password?</button>}
             </div>
           )}
-          {err && <p className="rounded-xl bg-bad-light px-3 py-2 text-sm text-bad">{err}</p>}
+          {err && (
+            <p className="rounded-xl bg-bad-light px-3 py-2 text-sm text-bad">
+              {err}
+              {err.startsWith("No account") && (
+                <button type="button" className="ml-1 font-medium underline" onClick={() => { setMode("register"); setErr(""); }}>Create account</button>
+              )}
+            </p>
+          )}
           <button className="btn w-full py-2.5" disabled={busy || (mode === "register" && !passwordOk(f.password))}>
             {busy ? "Please wait..." : mode === "register" ? "Create account" : loginWith === "code" ? "Email me a code" : "Log in"}
           </button>
