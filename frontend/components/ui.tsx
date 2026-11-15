@@ -19,6 +19,18 @@ export function Band({ band }: { band?: string | null }) {
   return <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${cls}`}>{band}</span>;
 }
 
+// "#3 of 1,863 · Top 1%": where the company stands among all makers with a failed batch.
+export function RiskRank({ c, compact = false }: { c: any; compact?: boolean }) {
+  if (!c?.risk_rank) return <Band band={c?.risk_band} />;
+  const cls = c.risk_band === "High" ? "bg-bad-light text-bad" : c.risk_band === "Medium" ? "bg-warn-light text-warn" : "bg-ok-light text-ok";
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap" title={`Risk rank ${c.risk_rank} of ${c.risk_of} companies. Model score ${c.risk_score}% chance of another failed batch in 6 months.`}>
+      {!compact && <span className="tabular-nums">#{c.risk_rank.toLocaleString("en-IN")} <span className="text-muted">of {c.risk_of.toLocaleString("en-IN")}</span></span>}
+      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${cls}`}>{compact ? `#${c.risk_rank} · ` : ""}Top {c.risk_top_pct}%</span>
+    </span>
+  );
+}
+
 export function PageTitle({ title, sub }: { title: string; sub?: ReactNode }) {
   return (
     <div className="mb-8">

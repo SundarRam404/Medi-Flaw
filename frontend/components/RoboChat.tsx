@@ -5,10 +5,13 @@ import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 
 // "Medi", the floating assistant: waves every 4 s, can be dragged anywhere, opens a chat on click.
-const W = 92, H = 112;
+// On phones only the head is shown, smaller, so it covers less of the screen.
+const BIG = { w: 92, h: 112 }, HEAD = { w: 58, h: 46 };
+let W = BIG.w, H = BIG.h;
 const LINES = ["Hi! Ask me anything \u{1F44B}", "Click me to chat", "Is your batch safe? Ask me!", "I’m powered by AI ✨"];
 const DRAG_LINES = ["Wheee!", "Whoa, careful!", "I can fly!", "Put me down! \u{1F604}", "Weeeee!"];
 const HIDE = ["/welcome", "/login", "/privacy", "/terms", "/letter", "/ask", "/watchlist/report"];
+const WAIT = [[0, "Reading the records..."], [3, "Finding the right batches..."], [7, "Writing the answer..."], [14, "Almost there, thanks for waiting..."]] as const;
 const EXAMPLES = ["Is batch SHT7550 safe?", "Which companies failed most in 2025?", "What is the most common failure?"];
 
 type Msg = { role: "you" | "bot"; text: string; sources?: any[] };
@@ -46,15 +49,16 @@ function srcLink(s: any) {
   return null;
 }
 
-function Robot({ drag, busy }: { drag: boolean; busy: boolean }) {
+function Robot({ drag, busy, head = false }: { drag: boolean; busy: boolean; head?: boolean }) {
   const eye = "#ffe7d6", ink = "#2b2320", shell = "#fffaf5", mauve = "#9c7a9e", tc = "#c2410c";
   return (
-    <svg viewBox="0 0 100 122" width={W} height={H} aria-hidden className="overflow-visible">
+    <svg viewBox={head ? "9 0 82 62" : "0 0 100 122"} width={head ? HEAD.w : BIG.w} height={head ? HEAD.h : BIG.h} aria-hidden className={`overflow-visible ${head ? "headonly" : ""}`}>
       <defs>
         <clipPath id="mfpill"><rect x="-7" y="-3.2" width="14" height="6.4" rx="3.2" /></clipPath>
       </defs>
-      <ellipse className="sh" cx="50" cy="117" rx="22" ry="4" fill="rgba(43,35,32,.18)" />
+      {!head && <ellipse className="sh" cx="50" cy="117" rx="22" ry="4" fill="rgba(43,35,32,.18)" />}
       <g className="b">
+        {!head && <>
         {/* legs */}
         <g className="lg1"><rect x="38" y="90" width="9" height="13" rx="4.5" fill={mauve} stroke={ink} strokeWidth="2" /><ellipse cx="42.5" cy="104" rx="7" ry="4.5" fill={tc} stroke={ink} strokeWidth="2" /></g>
         <g className="lg2"><rect x="53" y="90" width="9" height="13" rx="4.5" fill={mauve} stroke={ink} strokeWidth="2" /><ellipse cx="57.5" cy="104" rx="7" ry="4.5" fill={tc} stroke={ink} strokeWidth="2" /></g>
@@ -66,6 +70,7 @@ function Robot({ drag, busy }: { drag: boolean; busy: boolean }) {
         <rect x="30" y="60" width="40" height="32" rx="15" fill={shell} stroke={ink} strokeWidth="2.5" />
         <circle cx="50" cy="75" r="8" fill="none" stroke="#ecd9cc" strokeWidth="2" />
         <circle className="heart" cx="50" cy="75" r="5" fill={tc} />
+        </>}
         {/* antenna with the logo pill */}
         <line x1="50" y1="14" x2="50" y2="6" stroke={ink} strokeWidth="2" />
         <g transform="translate(50 4) rotate(-35)">
@@ -113,21 +118,36 @@ export default function RoboChat() {
   const [msgs, setMsgs] = useState<Msg[]>([]);
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  const [waited, setWaited] = useState(0);
   const st = useRef({ sx: 0, sy: 0, ox: 0, oy: 0, moved: false, active: false, lx: 0, lt: 0, skipClick: false });
   const list = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const small = window.innerWidth < 640;
+    setMobile(small);
+    W = small ? HEAD.w : BIG.w; H = small ? HEAD.h : BIG.h;
     let saved: any = null;
     try { saved = JSON.parse(localStorage.getItem("mf_bot") || "null"); } catch {}
     setPos(saved ? clampPos(saved.x, saved.y) : clampPos(window.innerWidth - W - 24, window.innerHeight - H - 24));
-    const onResize = () => setPos((p) => (p ? clampPos(p.x, p.y) : p));
+    const onResize = () => {
+      const sm = window.innerWidth < 640;
+      setMobile(sm);
+      W = sm ? HEAD.w : BIG.w; H = sm ? HEAD.h : BIG.h;
+      setPos((p) => (p ? clampPos(p.x, p.y) : p));
+    };
     window.addEventListener("resize", onResize);
     const t = setInterval(() => setLine((l) => (l + 1) % LINES.length), 4000);
     return () => { window.removeEventListener("resize", onResize); clearInterval(t); };
   }, []);
 
   useEffect(() => { list.current?.scrollTo({ top: list.current.scrollHeight, behavior: "smooth" }); }, [msgs, busy]);
+  useEffect(() => {
+    if (!busy) { setWaited(0); return; }
+    const t = setInterval(() => setWaited((w) => w + 1), 1000);
+    return () => clearInterval(t);
+  }, [busy]);
   useEffect(() => { if (open) setTimeout(() => input.current?.focus(), 50); }, [open]);
 
   if (!pos || HIDE.some((p) => path === p || path.startsWith(p + "/"))) return null;
@@ -203,6 +223,8 @@ export default function RoboChat() {
         .mfbot .ar{transform-origin:74px 66px;animation:mfwave 4s ease-in-out infinite}
         .mfbot .al{transform-origin:26px 66px}
         .mfbot .lg1{transform-origin:42px 91px}.mfbot .lg2{transform-origin:57px 91px}
+        .mfbot .headonly .b{animation:mfnod 4s ease-in-out infinite;transform-origin:50px 40px}
+        @keyframes mfnod{0%,100%{transform:rotate(0)}8%{transform:rotate(-10deg)}16%{transform:rotate(8deg)}24%{transform:rotate(-6deg)}32%{transform:rotate(0)}}
         .mfbot .eye{transform-box:fill-box;transform-origin:center;animation:mfblink 5s infinite}
         .mfbot .heart{transform-box:fill-box;transform-origin:center;animation:mfpulse 1.6s ease-in-out infinite}
         .mfbot .look{animation:mflook .9s ease-in-out infinite alternate}
@@ -242,7 +264,7 @@ export default function RoboChat() {
           onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onClick={click}
           className={`mfbot block h-full w-full touch-none select-none outline-none focus-visible:ring-4 focus-visible:ring-[#f6dccf] ${drag ? "mfbot-drag cursor-grabbing" : "cursor-grab"} ${landed ? "mfbot-land" : ""}`}>
           <div style={{ transform: `rotate(${tilt}deg) scale(${drag ? 1.08 : 1})`, transition: "transform .15s ease-out", transformOrigin: "50% 20%" }}>
-            <Robot drag={drag} busy={busy} />
+            <Robot drag={drag} busy={busy} head={mobile} />
           </div>
         </button>
       </div>
@@ -289,8 +311,11 @@ export default function RoboChat() {
               </div>
             ))}
             {busy && (
-              <div className="flex w-16 items-center justify-center gap-1 rounded-2xl rounded-tl-md bg-sand px-3 py-3">
-                {[0, 1, 2].map((d) => <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted" style={{ animationDelay: `${d * 0.15}s` }} />)}
+              <div className="inline-flex items-center gap-2.5 rounded-2xl rounded-tl-md bg-sand px-3 py-2.5 text-xs text-muted">
+                <span className="flex gap-1">
+                  {[0, 1, 2].map((d) => <span key={d} className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted" style={{ animationDelay: `${d * 0.15}s` }} />)}
+                </span>
+                {[...WAIT].reverse().find(([t]) => waited >= t)?.[1]}
               </div>
             )}
           </div>

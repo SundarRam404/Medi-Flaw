@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, month } from "@/lib/api";
-import { Band, PageTitle, Table, Td, Pager, Loading, ErrorNote } from "@/components/ui";
+import { Band, RiskRank, PageTitle, Table, Td, Pager, Loading, ErrorNote } from "@/components/ui";
 import IndiaMap from "@/components/IndiaMap";
 
 export default function Companies() {
@@ -26,7 +26,7 @@ export default function Companies() {
   return (
     <div>
       <PageTitle title="Companies"
-        sub="Every manufacturer with at least one failed batch. Risk is the chance of another failed batch in the next 6 months, based on its past record." />
+        sub="Every manufacturer with at least one failed batch, ranked by how likely it is to have another failed batch in the next 6 months (#1 = riskiest), based on its past record." />
 
       <section className="card p-5">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
@@ -51,7 +51,7 @@ export default function Companies() {
                     <Link href={`/companies/${c.id}`} className="font-medium text-ink">{c.name}</Link>
                     <div className="text-xs text-muted">{c.state || "State not known"} &middot; {c.total_failures} failed batches &middot; last {month(c.last_month)}</div>
                   </div>
-                  <span className="whitespace-nowrap text-sm tabular-nums">{c.risk_score}% <Band band={c.risk_band} /></span>
+                  <span className="text-sm"><RiskRank c={c} /></span>
                 </li>
               ))}
             </ol>
@@ -103,7 +103,7 @@ export default function Companies() {
             <li key={c.id} className="card p-4">
               <div className="flex items-start justify-between gap-2">
                 <Link href={`/companies/${c.id}`} className="font-medium text-ink">{c.name}</Link>
-                <span className="whitespace-nowrap text-sm tabular-nums">{c.risk_score}% <Band band={c.risk_band} /></span>
+                <span className="text-sm"><RiskRank c={c} /></span>
               </div>
               <div className="mt-1 text-xs text-muted">{c.state || "-"} &middot; {c.period_failures} failed &middot; last {month(c.last_month)} &middot; repeat {Math.round(c.repeat_score)}</div>
             </li>
@@ -111,7 +111,7 @@ export default function Companies() {
           <li><Pager page={page} total={d.total} size={50} onPage={setPage} /></li>
         </ul>
         <div className="card hidden p-2 md:block">
-          <Table head={["Company", "State", period === "all" ? "Failed batches" : "Failed in period", "Last failure", "Repeat score", "Risk (6 months)"]}>
+          <Table head={["Company", "State", period === "all" ? "Failed batches" : "Failed in period", "Last failure", "Repeat score", "Risk rank"]}>
             {d.items.map((c: any) => (
               <tr key={c.id}>
                 <Td><Link href={`/companies/${c.id}`}>{c.name}</Link></Td>
@@ -119,7 +119,7 @@ export default function Companies() {
                 <Td className="tabular-nums">{c.period_failures}{period !== "all" && <span className="text-xs text-muted"> of {c.total_failures}</span>}</Td>
                 <Td className="whitespace-nowrap text-muted">{month(c.last_month)}</Td>
                 <Td className="tabular-nums">{Math.round(c.repeat_score)}</Td>
-                <Td className="whitespace-nowrap tabular-nums">{c.risk_score}% <Band band={c.risk_band} /></Td>
+                <Td><RiskRank c={c} /></Td>
               </tr>
             ))}
           </Table>

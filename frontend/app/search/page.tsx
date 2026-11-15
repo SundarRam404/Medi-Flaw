@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { api, month } from "@/lib/api";
-import { Danger, Band, Table, Td, BatchLink, Loading, ErrorNote } from "@/components/ui";
+import { Danger, Band, RiskRank, Table, Td, BatchLink, Loading, ErrorNote } from "@/components/ui";
 
 function Results() {
   const sp = useSearchParams();
@@ -13,11 +13,21 @@ function Results() {
   const [d, setD] = useState<any>(null);
   const [err, setErr] = useState("");
 
+  const [more, setMore] = useState(false);
   useEffect(() => {
     setTerm(q);
     setD(null);
     if (q.length >= 2) api(`/api/search?q=${encodeURIComponent(q)}`).then(setD).catch((e) => setErr(e.message));
   }, [q]);
+
+  async function loadMore() {
+    setMore(true);
+    try {
+      const n = await api(`/api/search?q=${encodeURIComponent(q)}&page=${(d.page || 1) + 1}`);
+      setD({ ...d, page: n.page, more: n.more, records: [...d.records, ...n.records] });
+    } catch (e: any) { setErr(e.message); }
+    setMore(false);
+  }
 
   return (
     <div>
@@ -33,13 +43,13 @@ function Results() {
             <div>
               <h2 className="h-display mb-3 text-3xl">Companies</h2>
               <div className="card">
-                <Table head={["Company", "State", "Failed batches", "Risk"]}>
+                <Table head={["Company", "State", "Failed batches", "Risk rank"]}>
                   {d.companies.map((c: any) => (
                     <tr key={c.id}>
                       <Td><Link href={`/companies/${c.id}`}>{c.name}</Link></Td>
                       <Td className="text-muted">{c.state || "-"}</Td>
                       <Td>{c.total_failures}</Td>
-                      <Td><Band band={c.risk_band} /></Td>
+                      <Td><RiskRank c={c} /></Td>
                     </tr>
                   ))}
                 </Table>
@@ -47,7 +57,7 @@ function Results() {
             </div>
           )}
           <div>
-            <h2 className="h-display mb-3 text-3xl">Failed batches {d.records.length === 50 ? "(first 50)" : `(${d.records.length})`}</h2>
+            <h2 className="h-display mb-3 text-3xl">Failed batches {d.more ? `(showing ${d.records.length})` : `(${d.records.length})`}</h2>
             {d.records.length === 0 ? (
               <p className="text-muted">No failed batches match "{q}".</p>
             ) : (
@@ -65,6 +75,9 @@ function Results() {
                   ))}
                 </Table>
               </div>
+            )}
+            {d.more && (
+              <button className="btn-light mt-3 w-full" onClick={loadMore} disabled={more}>{more ? "Loading..." : "Show more results \u2193"}</button>
             )}
           </div>
         </div>

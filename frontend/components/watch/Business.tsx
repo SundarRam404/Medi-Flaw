@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, dateTime, month } from "@/lib/api";
-import { Box, Table, Td, Danger, Band, Loading, ErrorNote } from "@/components/ui";
+import { Box, Table, Td, Danger, Band, RiskRank, Loading, ErrorNote } from "@/components/ui";
 import ScanButton from "@/components/ScanButton";
 
 declare global { interface Window { Tesseract: any } }
@@ -314,7 +314,7 @@ export default function Business({ user, onSettings }: { user: any; onSettings?:
                 <Td className="font-mono">{w.batch_no}</Td>
                 <Td>
                   {w.company ? <Link href={`/companies/${w.company.id}`}>{w.manufacturer || w.company.name}</Link> : (w.manufacturer || "-")}
-                  {w.company && <div className="text-xs text-muted">Risk {w.company.risk_score}% <Band band={w.company.risk_band} /> &middot; {w.company.failures} failed batches</div>}
+                  {w.company && <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted"><RiskRank c={w.company} compact /> {w.company.failures} failed batches</div>}
                 </Td>
                 <Td className="tabular-nums">{w.quantity ?? "-"}</Td>
                 <Td>

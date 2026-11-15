@@ -23,7 +23,7 @@ export default function Company({ params }: { params: { id: string } }) {
       <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Failed batches" value={c.total_failures} />
         <Stat label="Repeat score" value={`${Math.round(c.repeat_score)}/100`} note="How often, how recent, same fault again" />
-        <Stat label="Risk, next 6 months" value={`${c.risk_score}%`} note={`${c.risk_band} risk`} />
+        <Stat label="Risk rank (next 6 months)" value={c.risk_rank ? `#${c.risk_rank.toLocaleString("en-IN")} of ${c.risk_of.toLocaleString("en-IN")}` : `${c.risk_score}%`} note={c.risk_rank ? `Top ${c.risk_top_pct}% riskiest · model score ${c.risk_score}%` : `${c.risk_band} risk`} />
         <Stat label="Unusual months" value={c.spikes.length} note="Far more failures than usual" />
       </div>
 

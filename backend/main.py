@@ -50,8 +50,28 @@ def rec_json(r: Record) -> dict:
             "expiry_date": r.expiry_date.isoformat() if r.expiry_date else None}
 
 
+_rank_cache = {"at": 0.0, "ranks": {}, "total": 0}
+
+
+def risk_ranks() -> tuple[dict, int]:
+    """Position of every company by risk (1 = riskiest). Ties broken by more failures, then name.
+    A rank reads better than '99%' when many companies have very high scores. Cached for 10 minutes."""
+    if time.time() - _rank_cache["at"] > 600:
+        with SessionLocal() as s:
+            ids = s.scalars(select(Company.id).where(Company.total_failures > 0)
+                            .order_by(desc(Company.risk_score), desc(Company.total_failures), Company.name)).all()
+        _rank_cache.update(at=time.time(), ranks={cid: i + 1 for i, cid in enumerate(ids)}, total=len(ids))
+    return _rank_cache["ranks"], _rank_cache["total"]
+
+
+def rank_json(cid: int) -> dict:
+    ranks, total = risk_ranks()
+    r = ranks.get(cid)
+    return {"risk_rank": r, "risk_of": total, "risk_top_pct": max(1, -(-r * 100 // total)) if r and total else None}
+
+
 def co_json(c: Company) -> dict:
-    return {"id": c.id, "name": c.name, "aliases": c.aliases or [], "state": c.state,
+    return {"id": c.id, "name": c.name, "aliases": c.aliases or [], "state": c.state, **rank_json(c.id),
             "total_failures": c.total_failures, "repeat_score": c.repeat_score, "risk_score": c.risk_score,
             "risk_band": c.risk_band, "risk_reasons": c.risk_reasons or [],
             "first_month": c.first_month.isoformat() if c.first_month else None,
@@ -628,17 +648,21 @@ def stats():
 
 
 @app.get("/api/search")
-def search(q: str = Query(min_length=2), limit: int = 50):
+def search(q: str = Query(min_length=2), limit: int = 50, page: int = 1):
     term = q.strip()
+    limit, page = max(1, min(limit, 100)), max(1, page)
     with SessionLocal() as s:
         recs = s.scalars(select(Record).where(or_(Record.batch_norm == bnorm(term),
                                                   Record.batch_norm.like(f"%{bnorm(term)}%") if len(bnorm(term)) >= 4 else False,
                                                   Record.drug_name.ilike(f"%{term}%"),
                                                   Record.manufacturer.ilike(f"%{term}%")))
-                         .order_by(desc(Record.report_month)).limit(limit)).all()
+                         .order_by(desc(Record.report_month), Record.id).offset((page - 1) * limit).limit(limit + 1)).all()
+        more = len(recs) > limit
+        recs = recs[:limit]
         cos = s.scalars(select(Company).where(Company.total_failures > 0, Company.name.ilike(f"%{term}%"))
-                        .order_by(desc(Company.total_failures)).limit(10)).all()
-    return {"query": term, "records": [rec_json(r) for r in recs], "companies": [co_json(c) for c in cos]}
+                        .order_by(desc(Company.total_failures)).limit(10)).all() if page == 1 else []
+    return {"query": term, "page": page, "more": more, "records": [rec_json(r) for r in recs],
+            "companies": [co_json(c) for c in cos]}
 
 
 @app.get("/api/batch/{batch}")
@@ -695,13 +719,14 @@ def companies(sort: str = "risk", q: str = "", state: str = "", period: str = "a
                       func.max(Record.report_month).label("last_m"))).group_by(Record.company_id).subquery()
         order = {"risk": desc(Company.risk_score), "failures": desc(cnt.c.n), "repeat": desc(Company.repeat_score),
                  "recent": desc(cnt.c.last_m), "name": Company.name}.get(sort, desc(Company.risk_score))
+        tie = desc(Company.total_failures)  # same order as the risk rank
         base = select(Company, cnt.c.n).join(cnt, cnt.c.cid == Company.id)
         if q:
             base = base.where(Company.name.ilike(f"%{q}%"))
         if state:
             base = base.where(Company.state == state)
         total = s.scalar(select(func.count()).select_from(base.subquery()))
-        rows = s.execute(base.order_by(order, desc(cnt.c.n), Company.name).offset((page - 1) * size).limit(size)).all()
+        rows = s.execute(base.order_by(order, tie, desc(cnt.c.n), Company.name).offset((page - 1) * size).limit(size)).all()
         states = [x for x in s.scalars(select(Company.state).where(Company.state.isnot(None)).distinct()).all()]
     return {"total": total, "page": page, "states": sorted(states),
             "period": {"key": period, "from": start.isoformat() if start else None,
@@ -938,11 +963,11 @@ def watch_rows(s, uid):
         co = None
         if hit and hit.company_id:
             c = s.get(Company, hit.company_id)
-            co = {"id": c.id, "name": c.name, "risk_score": c.risk_score, "risk_band": c.risk_band, "failures": c.total_failures}
+            co = {"id": c.id, "name": c.name, "risk_score": c.risk_score, "risk_band": c.risk_band, "failures": c.total_failures, **rank_json(c.id)}
         elif w.manufacturer:
             r = cindex.get(nk(w.manufacturer))
             if r:
-                co = {"id": r.id, "name": r.name, "risk_score": r.risk_score, "risk_band": r.risk_band, "failures": r.total_failures}
+                co = {"id": r.id, "name": r.name, "risk_score": r.risk_score, "risk_band": r.risk_band, "failures": r.total_failures, **rank_json(r.id)}
         a = alerts_by_watch.get(w.id)
         out.append({"id": w.id, "batch_no": w.batch_no, "batch_norm": w.batch_norm, "drug_name": w.drug_name,
                     "manufacturer": w.manufacturer, "quantity": w.quantity,

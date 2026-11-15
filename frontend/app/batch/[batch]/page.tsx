@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { api, getUser, month } from "@/lib/api";
-import { Danger, Band, Loading, ErrorNote } from "@/components/ui";
+import { Danger, Band, RiskRank, Loading, ErrorNote } from "@/components/ui";
 
 export default function BatchPage({ params }: { params: { batch: string } }) {
   const batch = decodeURIComponent(params.batch);
@@ -51,8 +51,27 @@ export default function BatchPage({ params }: { params: { batch: string } }) {
               Failed a quality test{d.records.length > 1 ? ` (${d.records.length} entries)` : ""}
             </p>
             <p className="mt-2 max-w-2xl text-sm text-ink">
-              This batch is listed by CDSCO as Not of Standard Quality. Shops should stop selling it and return it to the distributor.
+              This batch is listed by CDSCO (the Government of India&apos;s drug regulator) as Not of Standard Quality.
             </p>
+          </div>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <div className="card p-5">
+              <div className="flex items-center gap-2 text-[15px] font-medium"><span aria-hidden>&#129658;</span> If you or your family take this medicine</div>
+              <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-ink">
+                <li><b>Do not stop it suddenly.</b> Call your doctor or pharmacist today.</li>
+                <li>Ask for the <b>same medicine from a different batch</b>.</li>
+                <li>Take the strip back to the shop where you bought it.</li>
+              </ol>
+            </div>
+            <div className="card p-5">
+              <div className="flex items-center gap-2 text-[15px] font-medium"><span aria-hidden>&#127978;</span> If you are a pharmacy</div>
+              <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-ink">
+                <li><b>Stop selling</b> this batch and keep it aside.</li>
+                <li>Return it to your distributor with the <b>return letter</b> below.</li>
+                <li>Check your other stock: add it to <Link href="/watchlist">My stock</Link>.</li>
+              </ol>
+            </div>
           </div>
 
           {d.records.map((r: any) => (
@@ -75,6 +94,17 @@ export default function BatchPage({ params }: { params: { batch: string } }) {
                 <Row k="Manufactured">{month(r.mfg_date)}</Row>
                 <Row k="Expiry">{month(r.expiry_date)}</Row>
               </dl>
+              {r.expiry_date && (() => {
+                const exp = new Date(r.expiry_date + "T00:00:00");
+                const gone = exp < new Date();
+                return (
+                  <div className={`border-t border-line px-5 py-3 text-sm ${gone ? "bg-sand/70 text-ink" : "bg-warn-light text-ink"}`}>
+                    {gone
+                      ? <>&#9888;&#65039; This batch <b>expired in {month(r.expiry_date, true)}</b>. It should no longer be sold. If you still have it at home, do not use it.</>
+                      : <>&#9888;&#65039; This batch is valid until <b>{month(r.expiry_date, true)}</b>, so it <b>may still be in shops and homes</b>. Check your strips.</>}
+                  </div>
+                );
+              })()}
               {r.findings?.length > 0 && (
                 <div className="border-t border-line bg-bad-light/50 px-5 py-3">
                   <div className="label text-bad">Test result</div>
@@ -94,7 +124,7 @@ export default function BatchPage({ params }: { params: { batch: string } }) {
                   <div className="mt-2 grid gap-2 sm:grid-cols-3">
                     <div>Failed batches: <b>{r.company.total_failures}</b></div>
                     <div>Repeat score: <b>{Math.round(r.company.repeat_score)}</b>/100</div>
-                    <div>Chance of another failure in 6 months: <b>{r.company.risk_score}%</b> <Band band={r.company.risk_band} /></div>
+                    <div className="flex flex-wrap items-center gap-1.5">Risk rank: <RiskRank c={r.company} /></div>
                   </div>
                 </div>
               )}
