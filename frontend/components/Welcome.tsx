@@ -28,6 +28,13 @@ function loadGoogle(): Promise<any> {
   });
 }
 
+const SpamTip = () => (
+  <div className="flex gap-2.5 rounded-xl border border-[#f3d9a8] bg-warn-light px-3 py-2.5 text-[13px] leading-snug text-ink">
+    <span aria-hidden className="text-lg leading-none">&#128236;</span>
+    <span>Not in your inbox? Open your <b>Spam</b> folder, find <b>&ldquo;Medi-Flaw code&rdquo;</b>, and tap <b>Not spam</b>. Next time it will come to your inbox.</span>
+  </div>
+);
+
 export default function Welcome() {
   const router = useRouter();
   const sp = useSearchParams();
@@ -196,6 +203,7 @@ export default function Welcome() {
             </p>
             <form onSubmit={finishStep} className="mt-5 space-y-2.5">
               {step.kind !== "google-password" && codeBox}
+              {step.kind !== "google-password" && <SpamTip />}
               {step.kind === "google-new" && (
                 <PasswordField className="py-2" value={spw} onChange={setSpw} checks placeholder="Create a password" autoComplete="new-password" />
               )}
@@ -213,7 +221,7 @@ export default function Welcome() {
             </form>
             <div className="mt-3 space-y-1 text-center text-sm text-muted">
               {step.kind !== "google-password" && (
-                <p>No email? Check spam, or <button className="font-medium text-brand hover:underline" onClick={resendStep}>send a new code</button></p>
+                <p>No email in 1 minute? <b className="font-medium text-ink">Check your Spam folder</b> and tap &ldquo;Not spam&rdquo;. Or <button className="font-medium text-brand hover:underline" onClick={resendStep}>send a new code</button></p>
               )}
               {step.kind === "google-code" && step.hasPassword && (
                 <p><button className="font-medium text-brand hover:underline" onClick={() => { setStep({ ...step, kind: "google-password" }); setErr(""); setNote(""); }}>Use password instead</button></p>
@@ -242,11 +250,12 @@ export default function Welcome() {
                 <p className="text-sm text-muted">We sent a 6-digit code to <b className="font-medium text-ink">{f.email}</b>.</p>
                 <input className="input py-3 text-center font-mono text-2xl tracking-[0.5em]" inputMode="numeric" autoComplete="one-time-code"
                   maxLength={6} placeholder="------" value={code} autoFocus onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} />
+                <SpamTip />
                 <PasswordField className="py-2" value={rpw} onChange={setRpw} checks placeholder="New password" autoComplete="new-password" />
                 {err && <p className="rounded-xl bg-bad-light px-3 py-2 text-sm text-bad">{err}</p>}
                 {note && <p className="rounded-xl bg-ok-light px-3 py-2 text-sm text-ok">{note}</p>}
                 <button className="btn w-full py-2.5" disabled={busy || code.length !== 6 || !passwordOk(rpw)}>{busy ? "Saving..." : "Set password and log in"}</button>
-                <p className="text-center text-sm text-muted">No email? Check spam, or <button type="button" className="font-medium text-brand hover:underline" onClick={() => resetSend()}>send a new code</button></p>
+                <p className="text-center text-sm text-muted">No email in 1 minute? <b className="font-medium text-ink">Check your Spam folder</b> and tap &ldquo;Not spam&rdquo;. Or <button type="button" className="font-medium text-brand hover:underline" onClick={() => resetSend()}>send a new code</button></p>
               </form>
             )}
             <p className="mt-3 text-center text-sm">
@@ -261,12 +270,13 @@ export default function Welcome() {
               <input className="input py-3 text-center font-mono text-2xl tracking-[0.5em]" inputMode="numeric" autoComplete="one-time-code"
                 maxLength={6} placeholder="------" value={code} autoFocus
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} />
+              <SpamTip />
               {err && <p className="rounded-xl bg-bad-light px-3 py-2 text-sm text-bad">{err}</p>}
               {note && <p className="rounded-xl bg-ok-light px-3 py-2 text-sm text-ok">{note}</p>}
               <button className="btn w-full py-2.5" disabled={busy || code.length !== 6}>{busy ? "Checking..." : "Verify and create account"}</button>
             </form>
             <p className="mt-3 text-center text-sm text-muted">
-              No email? Check spam, or <button className="font-medium text-brand hover:underline" onClick={resend}>send a new code</button>
+              No email in 1 minute? <b className="font-medium text-ink">Check your Spam folder</b> and tap &ldquo;Not spam&rdquo;. Or <button className="font-medium text-brand hover:underline" onClick={resend}>send a new code</button>
             </p>
             <p className="mt-1 text-center text-sm">
               <button className="text-muted hover:text-ink" onClick={() => { setPending(null); setErr(""); setNote(""); }}>&larr; Change email</button>
