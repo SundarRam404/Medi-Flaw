@@ -45,7 +45,7 @@
             {
               "id": "39005aad-ddbd-43dc-a168-07aedae45c52",
               "name": "api",
-              "value": "http://localhost:8000",
+              "value": "http://127.0.0.1:8000",
               "type": "string"
             },
             {
