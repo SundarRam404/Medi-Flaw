@@ -700,8 +700,10 @@ def p_fail(body: RunIn, who=Depends(pipeline_auth)):
 
 
 @app.post("/api/pipeline/run-now")
-def run_now(bg: BackgroundTasks, u: User = Depends(admin_user)):
-    """Starts a run through n8n if it is set up, otherwise runs here."""
+def run_now(bg: BackgroundTasks, who=Depends(pipeline_auth)):
+    """Starts a run through n8n if it is set up, otherwise runs here.
+    Accepts an admin login (the website button) or the pipeline key (a scheduler such as cron-job.org).
+    Returns at once; the run continues in the background."""
     if N8N_WEBHOOK_URL:
         try:
             r = httpx.post(N8N_WEBHOOK_URL, json={"trigger": "manual"}, timeout=10)
@@ -709,8 +711,9 @@ def run_now(bg: BackgroundTasks, u: User = Depends(admin_user)):
             return {"started": "n8n", "message": "Run started in n8n."}
         except Exception as e:
             pass
-    rid = pipeline.start_run("manual")
-    bg.add_task(pipeline.run_all, "manual", rid)
+    trigger = "manual" if who == "admin" else "schedule"
+    rid = pipeline.start_run(trigger)
+    bg.add_task(pipeline.run_all, trigger, rid)
     return {"started": "server", "run_id": rid, "message": "Run started."}
 
 
