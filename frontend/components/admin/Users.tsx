@@ -34,7 +34,8 @@ export default function Users() {
   const [open, setOpen] = useState<number | null>(null);
   const [det, setDet] = useState<any>(null);
 
-  useEffect(() => { api("/api/admin/users").then(setD).catch((e) => setErr(e.message)); }, []);
+  const load = () => api("/api/admin/users").then(setD).catch((e) => setErr(e.message));
+  useEffect(() => { load(); }, []);
   useEffect(() => {
     setDet(null);
     if (open != null) api(`/api/admin/users/${open}`).then(setDet).catch((e) => setErr(e.message));
@@ -99,7 +100,7 @@ export default function Users() {
                 </tr>
                 {open === u.id && (
                   <tr><td colSpan={10} className="bg-paper px-3 pb-4 pt-1">
-                    {!det ? <Loading /> : <Detail d={det} />}
+                    {!det ? <Loading /> : <Detail d={det} onDeleted={() => { setOpen(null); load(); }} />}
                   </td></tr>
                 )}
               </Fragment>
@@ -112,8 +113,18 @@ export default function Users() {
   );
 }
 
-function Detail({ d }: { d: any }) {
+function Detail({ d, onDeleted }: { d: any; onDeleted: () => void }) {
   const u = d.user;
+  const [ask, setAsk] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  async function del() {
+    setBusy(true); setMsg("");
+    try { await api(`/api/admin/users/${u.id}`, { method: "DELETE" }); onDeleted(); }
+    catch (e: any) { setMsg(e.message); }
+    setBusy(false);
+  }
   return (
     <div className="grid gap-3 lg:grid-cols-3">
       <div className="card p-4 text-sm lg:col-span-2">
@@ -170,6 +181,22 @@ function Detail({ d }: { d: any }) {
             {u.extra_emails?.length > 0 && <div><dt className="text-muted">Staff emails</dt><dd>{u.extra_emails.join(", ")}</dd></div>}
           </dl>
           <a href={`mailto:${u.email}`} className="btn-light mt-3 w-full py-1.5 text-xs hover:no-underline">Email this user</a>
+          {u.role !== "admin" && (!ask ? (
+            <button onClick={() => setAsk(true)} className="mt-2 w-full rounded-full border border-bad/30 py-1.5 text-xs text-bad hover:bg-bad-light">Delete this account</button>
+          ) : (
+            <div className="mt-2 rounded-xl border border-bad/30 bg-bad-light p-3 text-xs">
+              <p className="text-bad">This deletes <b>{u.email}</b>, their {d.medicines.length} medicines, {d.alerts.length} alerts and history. It cannot be undone.</p>
+              <p className="mt-2 text-muted">Type the email to confirm:</p>
+              <input className="input mt-1 py-1.5 text-xs" value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={u.email} />
+              {msg && <p className="mt-1 text-bad">{msg}</p>}
+              <div className="mt-2 flex gap-2">
+                <button className="btn-light flex-1 py-1 text-xs" onClick={() => { setAsk(false); setTyped(""); }}>Cancel</button>
+                <button className="flex-1 rounded-full bg-bad py-1 text-xs text-white disabled:opacity-40" disabled={busy || typed.trim().toLowerCase() !== u.email.toLowerCase()} onClick={del}>
+                  {busy ? "Deleting..." : "Delete forever"}
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
         <div className="card p-4 text-sm">
           <div className="mb-2 font-medium">Activity</div>

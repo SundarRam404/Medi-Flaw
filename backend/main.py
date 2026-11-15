@@ -1146,6 +1146,26 @@ def admin_user_detail(uid: int, a: User = Depends(admin_user)):
         }
 
 
+@app.delete("/api/admin/users/{uid}")
+def admin_delete_user(uid: int, a: User = Depends(admin_user)):
+    """Admin removes an account and everything that belongs to it. Admin accounts cannot be deleted here."""
+    with SessionLocal() as s:
+        u = s.get(User, uid)
+        if not u:
+            raise HTTPException(404, "User not found")
+        if u.id == a.id or u.role == "admin":
+            raise HTTPException(400, "Admin accounts cannot be deleted from here")
+        email = u.email
+        s.execute(text("delete from alerts where user_id = :u"), {"u": uid})
+        s.execute(text("delete from watchlist where user_id = :u"), {"u": uid})
+        s.execute(text("delete from auth_events where user_id = :u"), {"u": uid})
+        s.execute(text("delete from email_codes where lower(email) = :e"), {"e": email.lower()})
+        s.delete(u)
+        s.commit()
+    print(f"admin {a.email} deleted user {email}", flush=True)
+    return {"ok": True, "deleted": email}
+
+
 # ------------------------------------------------------------------ questions
 class AskIn(BaseModel):
     question: str
