@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Fragment, useEffect, useState } from "react";
 import { api, getUser, dateTime } from "@/lib/api";
 import { Box, PageTitle, Table, Td, Loading, ErrorNote } from "@/components/ui";
+import Users from "@/components/admin/Users";
 
 const STEP_NAMES: Record<string, string> = {
   fetch: "Fetch new CDSCO data", clean: "Clean", score: "Risk scores", index: "Search index",
@@ -25,7 +26,7 @@ function stepSummary(name: string, r: any) {
 
 export default function Admin() {
   const [user, setUser] = useState<any>(undefined);
-  const [tab, setTab] = useState<"runs" | "outbox" | "model">("runs");
+  const [tab, setTab] = useState<"users" | "runs" | "outbox" | "model">("users");
   const [runs, setRuns] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[] | null>(null);
   const [model, setModel] = useState<any>(null);
@@ -64,7 +65,7 @@ export default function Admin() {
       <Box title="Daily update">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="max-w-2xl text-sm text-muted">
-            Runs every morning at 5 AM: fetch new CDSCO data, clean it, email shops whose batches appear, and send
+            Runs every evening at 9 PM: fetch new CDSCO data, clean it, email shops whose batches appear, and send
             reminders for alerts nobody confirmed. Risk scores and the search index are rebuilt when new data arrives,
             and fully on the 1st of each month.
             {runs && (runs.n8n ? " Run now goes through n8n." : " n8n link not set, Run now runs on the server.")}
@@ -76,10 +77,13 @@ export default function Admin() {
       </Box>
 
       <div className="tabs mt-8">
+        <button className={`tab ${tab === "users" ? "tab-on" : ""}`} onClick={() => setTab("users")}>Users</button>
         <button className={`tab ${tab === "runs" ? "tab-on" : ""}`} onClick={() => setTab("runs")}>Run history</button>
         <button className={`tab ${tab === "outbox" ? "tab-on" : ""}`} onClick={() => setTab("outbox")}>Alert emails {alerts ? `(${alerts.length})` : ""}</button>
         <button className={`tab ${tab === "model" ? "tab-on" : ""}`} onClick={() => setTab("model")}>Model results</button>
       </div>
+
+      {tab === "users" && <Users />}
 
       {tab === "runs" && (
         <div className="mt-4 space-y-3">

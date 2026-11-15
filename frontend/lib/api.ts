@@ -24,7 +24,14 @@ export function saveLogin(token: string, user: any) {
   window.dispatchEvent(new Event("pa-auth"));
 }
 
-export function logout() {
+export function logout(tellServer = true) {
+  try {
+    const t = localStorage.getItem("pa_token");
+    if (tellServer && t) {
+      // records the logout for the admin activity view; never blocks logging out
+      fetch(`${API}/api/auth/logout`, { method: "POST", headers: { Authorization: `Bearer ${t}` }, keepalive: true }).catch(() => {});
+    }
+  } catch {}
   try {
     localStorage.removeItem("pa_token");
     localStorage.removeItem("pa_user");
@@ -45,7 +52,7 @@ export async function api(path: string, opts: RequestInit = {}) {
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    if (res.status === 401) logout();
+    if (res.status === 401) logout(false);
     throw new Error(typeof data.detail === "string" ? data.detail : "Something went wrong");
   }
   return data;

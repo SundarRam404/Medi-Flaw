@@ -8,7 +8,7 @@ from fastapi import FastAPI, Depends, HTTPException, Header, UploadFile, File, F
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select, func, or_, desc, text
-from pipeline.db import (SessionLocal, init_db, utcnow, RawRecord, Record, Company, CleaningLog, User, EmailCode,
+from pipeline.db import (SessionLocal, init_db, utcnow, RawRecord, Record, Company, CleaningLog, User, EmailCode, AuthEvent,
                          WatchItem, Alert, PipelineRun, Spike, ModelReport, AskLog)
 from pipeline.config import SECRET_KEY, PIPELINE_KEY, N8N_WEBHOOK_URL, GROQ_API_KEY, GROQ_MODEL, GEMINI_API_KEY, GEMINI_MODEL, LLM_ORDER
 from pipeline import run as pipeline
@@ -130,6 +130,29 @@ def user_json(u: User):
             "auth_provider": u.auth_provider or "password"}
 
 
+def password_problem(p: str) -> str | None:
+    """Same rules as the meter on the website: 8+ characters with a letter, a number and a symbol."""
+    if len(p or "") < 8:
+        return "Use a password with at least 8 characters"
+    if not re.search(r"[A-Za-z]", p):
+        return "Add at least one letter to your password"
+    if not re.search(r"\d", p):
+        return "Add at least one number to your password"
+    if not re.search(r"[^A-Za-z0-9]", p):
+        return "Add at least one symbol (like @ # ! $) to your password"
+    return None
+
+
+def log_event(user_id: int | None, kind: str, method: str | None = None):
+    """Best effort: activity logging must never block a login."""
+    try:
+        with SessionLocal() as s:
+            s.add(AuthEvent(user_id=user_id, kind=kind, method=method))
+            s.commit()
+    except Exception as e:
+        print(f"auth event not saved: {e}", flush=True)
+
+
 def _code_hash(email: str, code: str) -> str:
     import hashlib, hmac
     return hmac.new(SECRET_KEY.encode(), f"{email}:{code}".encode(), hashlib.sha256).hexdigest()
@@ -141,8 +164,8 @@ def register(body: Register):
     import secrets
     from pipeline.alerts import send_email
     email = body.email.lower().strip()
-    if len(body.password) < 8:
-        raise HTTPException(400, "Use a password with at least 8 characters")
+    if password_problem(body.password):
+        raise HTTPException(400, password_problem(body.password))
     if not body.name.strip():
         raise HTTPException(400, "Please enter your name")
     now = utcnow()
@@ -210,7 +233,8 @@ def verify_code(body: VerifyIn):
         c.used = True
         s.add(u)
         s.commit()
-        return {"token": make_token(u), "user": user_json(u)}
+    log_event(u.id, "signup", "password")
+    return {"token": make_token(u), "user": user_json(u)}
 
 
 @app.post("/api/auth/login")
@@ -218,7 +242,10 @@ def login(body: Login):
     with SessionLocal() as s:
         u = s.scalar(select(User).where(User.email == body.email.lower()))
     if not u or not bcrypt.checkpw(body.password.encode(), u.password_hash.encode()):
+        if u:
+            log_event(u.id, "login_failed", "password")
         raise HTTPException(401, "Wrong email or password")
+    log_event(u.id, "login", "password")
     return {"token": make_token(u), "user": user_json(u)}
 
 
@@ -226,10 +253,12 @@ def login(body: Login):
 def google_login(body: GoogleIn):
     g = verify_google(body.credential)
     email = g["email"].lower()
+    new = False
     with SessionLocal() as s:
         u = s.scalar(select(User).where(User.email == email))
         if not u:
             import secrets
+            new = True
             acct = _acct(body.account_type)
             u = User(email=email, name=(g.get("name") or email.split("@")[0])[:200],
                      organisation=(body.organisation or None) if acct == "business" else None,
@@ -237,7 +266,14 @@ def google_login(body: GoogleIn):
                      password_hash=pipeline.hash_pw(secrets.token_urlsafe(32)))
             s.add(u)
             s.commit()
+    log_event(u.id, "signup" if new else "login", "google")
     return {"token": make_token(u), "user": user_json(u)}
+
+
+@app.post("/api/auth/logout")
+def logout_event(u: User = Depends(current_user)):
+    log_event(u.id, "logout")
+    return {"ok": True}
 
 
 @app.get("/api/auth/config")
@@ -253,8 +289,8 @@ class PasswordIn(BaseModel):
 
 @app.post("/api/auth/password")
 def change_password(body: PasswordIn, u: User = Depends(current_user)):
-    if len(body.new) < 8:
-        raise HTTPException(400, "Use a new password with at least 8 characters")
+    if password_problem(body.new):
+        raise HTTPException(400, password_problem(body.new))
     with SessionLocal() as s:
         x = s.get(User, u.id)
         if (x.auth_provider or "password") == "google":
@@ -263,6 +299,7 @@ def change_password(body: PasswordIn, u: User = Depends(current_user)):
             raise HTTPException(400, "Your current password is wrong")
         x.password_hash = pipeline.hash_pw(body.new)
         s.commit()
+    log_event(u.id, "password_changed", "password")
     return {"ok": True}
 
 
@@ -815,6 +852,65 @@ def my_alerts(u: User = Depends(current_user)):
                        "sent_at": a.sent_at.isoformat(), "acknowledged_at": a.acknowledged_at.isoformat() if a.acknowledged_at else None,
                        "followup_at": a.followup_at.isoformat() if a.followup_at else None, "record_id": a.record_id}
                       for a in rows]}
+
+
+# ------------------------------------------------------------------ admin: users
+def _iso(d):
+    return d.isoformat() if d else None
+
+
+@app.get("/api/admin/users")
+def admin_users(a: User = Depends(admin_user)):
+    from pipeline.config import FOLLOWUP_DAYS
+    with SessionLocal() as s:
+        users = s.scalars(select(User).order_by(desc(User.created_at))).all()
+        items = dict(s.execute(select(WatchItem.user_id, func.count()).group_by(WatchItem.user_id)).all())
+        failed = dict(s.execute(select(WatchItem.user_id, func.count(func.distinct(WatchItem.id)))
+                                .join(Record, Record.batch_norm == WatchItem.batch_norm)
+                                .where(WatchItem.status != "returned").group_by(WatchItem.user_id)).all())
+        al = {r[0]: r[1:] for r in s.execute(select(Alert.user_id, func.count(), func.max(Alert.sent_at),
+                                                     func.count(Alert.acknowledged_at)).group_by(Alert.user_id)).all()}
+        due = {r[0]: r[1] for r in s.execute(select(Alert.user_id, func.min(Alert.sent_at))
+                                              .where(Alert.acknowledged_at.is_(None), Alert.followup_at.is_(None),
+                                                     Alert.delivery == "sent").group_by(Alert.user_id)).all()}
+        last = {}
+        for kind in ("login", "logout"):
+            last[kind] = dict(s.execute(select(AuthEvent.user_id, func.max(AuthEvent.at))
+                                        .where(AuthEvent.kind == kind).group_by(AuthEvent.user_id)).all())
+        out = []
+        for u in users:
+            n_al, last_al, acked = al.get(u.id, (0, None, 0))
+            out.append({**user_json(u), "joined": _iso(u.created_at), "email_alerts": u.email_alerts is not False,
+                        "extra_emails": u.extra_emails or [], "medicines": items.get(u.id, 0),
+                        "failed_in_stock": failed.get(u.id, 0), "alerts": n_al, "alerts_confirmed": acked,
+                        "last_alert": _iso(last_al),
+                        "next_reminder": _iso(due[u.id] + timedelta(days=FOLLOWUP_DAYS)) if u.id in due else None,
+                        "last_login": _iso(last["login"].get(u.id)), "last_logout": _iso(last["logout"].get(u.id))})
+    return {"items": out, "followup_days": FOLLOWUP_DAYS}
+
+
+@app.get("/api/admin/users/{uid}")
+def admin_user_detail(uid: int, a: User = Depends(admin_user)):
+    from pipeline.config import FOLLOWUP_DAYS
+    with SessionLocal() as s:
+        u = s.get(User, uid)
+        if not u:
+            raise HTTPException(404, "User not found")
+        meds = watch_rows(s, uid)
+        alerts = s.scalars(select(Alert).where(Alert.user_id == uid).order_by(desc(Alert.id))).all()
+        events = s.scalars(select(AuthEvent).where(AuthEvent.user_id == uid).order_by(desc(AuthEvent.id)).limit(100)).all()
+        return {
+            "user": {**user_json(u), "joined": _iso(u.created_at), "email_alerts": u.email_alerts is not False,
+                     "extra_emails": u.extra_emails or []},
+            "medicines": meds,
+            "alerts": [{"id": x.id, "subject": x.subject, "to": x.to_email, "delivery": x.delivery,
+                        "sent_at": _iso(x.sent_at), "acknowledged_at": _iso(x.acknowledged_at),
+                        "followup_at": _iso(x.followup_at),
+                        "reminder_due": _iso(x.sent_at + timedelta(days=FOLLOWUP_DAYS))
+                        if not x.acknowledged_at and not x.followup_at and x.delivery == "sent" else None}
+                       for x in alerts],
+            "events": [{"kind": e.kind, "method": e.method, "at": _iso(e.at)} for e in events],
+        }
 
 
 # ------------------------------------------------------------------ questions

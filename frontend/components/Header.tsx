@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, getUser, getToken, saveLogin, logout } from "@/lib/api";
 import Logo from "@/components/Logo";
 import Avatar, { AVATARS } from "@/components/Avatar";
+import PasswordField, { passwordOk } from "@/components/PasswordField";
 
 export default function Header() {
   const path = usePathname();
@@ -113,11 +114,11 @@ export default function Header() {
                   )}
                   {pw && (
                     <form onSubmit={changePw} className="space-y-2 px-2 pb-2 pt-1">
-                      <input className="input py-2 text-sm" type="password" placeholder="Current password" required autoComplete="current-password"
-                        value={f.current} onChange={(e) => setF({ ...f, current: e.target.value })} />
-                      <input className="input py-2 text-sm" type="password" placeholder="New password (8+ characters)" required minLength={8} autoComplete="new-password"
-                        value={f.next} onChange={(e) => setF({ ...f, next: e.target.value })} />
-                      <button className="btn w-full py-2" disabled={busy}>{busy ? "Saving..." : "Save new password"}</button>
+                      <PasswordField className="py-2 text-sm" placeholder="Current password" autoComplete="current-password"
+                        value={f.current} onChange={(v) => setF({ ...f, current: v })} />
+                      <PasswordField className="py-2 text-sm" placeholder="New password" autoComplete="new-password" checks
+                        value={f.next} onChange={(v) => setF({ ...f, next: v })} />
+                      <button className="btn w-full py-2" disabled={busy || !passwordOk(f.next)}>{busy ? "Saving..." : "Save new password"}</button>
                     </form>
                   )}
                   {msg && <p className={`mx-2 rounded-lg px-2.5 py-1.5 text-xs ${msg.ok ? "bg-ok-light text-ok" : "bg-bad-light text-bad"}`}>{msg.t}</p>}

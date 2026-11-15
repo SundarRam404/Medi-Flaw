@@ -106,6 +106,16 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
 
 
+class AuthEvent(Base):
+    """Sign-ups, logins, logouts and password changes, for the admin activity view."""
+    __tablename__ = "auth_events"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    kind: Mapped[str] = mapped_column(String(30))  # signup / login / logout / login_failed / password_changed
+    method: Mapped[str | None] = mapped_column(String(20))  # password / google
+    at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, index=True)
+
+
 class EmailCode(Base):
     """A 6-digit code emailed at sign-up. The account is only created once the code is entered."""
     __tablename__ = "email_codes"

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { api, saveLogin, getUser } from "@/lib/api";
 import { setGuest } from "@/components/Shell";
 import Logo from "@/components/Logo";
+import PasswordField, { passwordOk } from "@/components/PasswordField";
 
 declare global { interface Window { google?: any } }
 
@@ -167,10 +168,10 @@ export default function Welcome() {
             </>
           )}
           <input className="input py-2" type="email" required placeholder="Email" value={f.email} onChange={set("email")} autoComplete="email" />
-          <input className="input py-2" type="password" required minLength={mode === "register" ? 8 : 1} value={f.password} onChange={set("password")}
-            placeholder={mode === "register" ? "Password (8+ characters)" : "Password"} autoComplete={mode === "login" ? "current-password" : "new-password"} />
+          <PasswordField className="py-2" value={f.password} onChange={(v) => setF({ ...f, password: v })} checks={mode === "register"}
+            placeholder={mode === "register" ? "Create a password" : "Password"} autoComplete={mode === "login" ? "current-password" : "new-password"} />
           {err && <p className="rounded-xl bg-bad-light px-3 py-2 text-sm text-bad">{err}</p>}
-          <button className="btn w-full py-2.5" disabled={busy}>{busy ? "Please wait..." : mode === "login" ? "Log in" : "Create account"}</button>
+          <button className="btn w-full py-2.5" disabled={busy || (mode === "register" && !passwordOk(f.password))}>{busy ? "Please wait..." : mode === "login" ? "Log in" : "Create account"}</button>
         </form>
 
         <p className="mt-3 text-center text-sm text-muted">
