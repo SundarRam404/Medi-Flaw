@@ -19,7 +19,8 @@ if curl -s -o /dev/null --max-time 3 http://127.0.0.1:5678/healthz; then
 else
   # an installed n8n starts in seconds; npx may download it first (minutes)
   if command -v n8n >/dev/null 2>&1; then N8N_CMD="n8n"; else N8N_CMD="npx --yes n8n"; fi
-  (cd ~ && N8N_RUNNERS_ENABLED=true nohup $N8N_CMD > "$OLDPWD/logs/n8n.log" 2>&1 & echo $! > "$OLDPWD/logs/n8n.pid")
+  APP_DIR="$(pwd)"
+(cd ~ && N8N_RUNNERS_ENABLED=true nohup $N8N_CMD > "$APP_DIR/logs/n8n.log" 2>&1 & echo $! > "$APP_DIR/logs/n8n.pid")
   echo "n8n starting              -> http://localhost:5678 (give it a minute)"
 fi
 
