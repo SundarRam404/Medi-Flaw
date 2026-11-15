@@ -59,7 +59,7 @@ export default function Welcome() {
   function done(r: any) {
     saveLogin(r.token, r.user);
     setGuest(false);
-    router.push(next || (r.user.role === "admin" ? "/admin" : "/watchlist"));
+    router.push(next || "/");
   }
 
   useEffect(() => {

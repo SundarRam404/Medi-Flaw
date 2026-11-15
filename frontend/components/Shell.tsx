@@ -24,7 +24,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (open) { setReady(true); return; }
     if (getUser() || isGuest()) { setReady(true); return; }
-    const next = path + (typeof window !== "undefined" ? window.location.search : "");
+    // after logging out from a private page, start fresh at home instead of returning there
+    const priv = path.startsWith("/watchlist") || path.startsWith("/admin");
+    const next = priv ? "/" : path + (typeof window !== "undefined" ? window.location.search : "");
     router.replace(`/welcome${next && next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`);
   }, [path, open, router]);
 
