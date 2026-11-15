@@ -23,6 +23,9 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 def startup():
     init_db()
     pipeline.seed_users()
+    closed = pipeline.close_stale_runs()
+    if closed:
+        print(f"Marked {closed} interrupted pipeline run(s) as failed", flush=True)
     from pipeline.demo import seed_demo_pharmacy
     try:
         if seed_demo_pharmacy(pipeline.hash_pw):
@@ -667,7 +670,10 @@ class RunIn(BaseModel):
 
 @app.post("/api/pipeline/start")
 def p_start(body: RunIn, who=Depends(pipeline_auth)):
-    return {"run_id": pipeline.start_run(body.trigger or who)}
+    try:
+        return {"run_id": pipeline.start_run(body.trigger or who)}
+    except pipeline.RunInProgress as e:
+        raise HTTPException(409, str(e))
 
 
 @app.post("/api/pipeline/step/{name}")
@@ -712,7 +718,10 @@ def run_now(bg: BackgroundTasks, who=Depends(pipeline_auth)):
         except Exception as e:
             pass
     trigger = "manual" if who == "admin" else "schedule"
-    rid = pipeline.start_run(trigger)
+    try:
+        rid = pipeline.start_run(trigger)
+    except pipeline.RunInProgress as e:
+        return {"started": False, "message": f"{e}. Not starting a second one."}
     bg.add_task(pipeline.run_all, trigger, rid)
     return {"started": "server", "run_id": rid, "message": "Run started."}
 

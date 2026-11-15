@@ -1,6 +1,6 @@
 """Step 5 - match new failed batches against every shop's watchlist and send emails.
 If Gmail is not set up, emails are kept in the outbox (alerts table) and shown on the site."""
-import secrets, smtplib
+import secrets, smtplib, threading
 import requests
 from datetime import datetime, timedelta
 from email.message import EmailMessage
@@ -75,8 +75,18 @@ Medi-Flaw
     return subject, body
 
 
+_run_lock = threading.Lock()
+
+
 def run(run_id=None, record_ids: list[int] | None = None) -> dict:
-    """Check the given new records (or all records) against all watchlists."""
+    """Check the given new records (or all records) against all watchlists.
+    One check at a time in this process, so the daily run and a pharmacist adding a
+    medicine can never both send the same alert."""
+    with _run_lock:
+        return _run(run_id, record_ids)
+
+
+def _run(run_id=None, record_ids: list[int] | None = None) -> dict:
     sent = outbox = failed = 0
     with SessionLocal() as s:
         q = select(WatchItem, Record).join(Record, Record.batch_norm == WatchItem.batch_norm) \

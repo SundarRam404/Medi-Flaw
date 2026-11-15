@@ -13,7 +13,7 @@ from rapidfuzz import fuzz
 from sqlalchemy import select
 from .db import SessionLocal, engine, AskLog
 from .config import (DATA_DIR, CHROMA_DIR, RAG_DOCS_DIR, GROQ_API_KEY, GROQ_MODEL,
-                     GEMINI_API_KEY, GEMINI_MODEL, LLM_ORDER, OLLAMA_URL, OLLAMA_MODEL)
+                     GEMINI_API_KEY, GEMINI_MODEL, LLM_ORDER, OLLAMA_URL, OLLAMA_MODEL, SEARCH_ENGINE)
 
 DOCS_FILE = DATA_DIR / "search_docs.json"
 REFUSAL = "No evidence found in Medi-Flaw records."
@@ -146,6 +146,9 @@ def run(run_id=None) -> dict:
     DOCS_FILE.write_text(json.dumps(docs))
     _cache.clear()
     engine_used = "tfidf"
+    if SEARCH_ENGINE == "tfidf":
+        (DATA_DIR / "search_engine.txt").write_text("tfidf (SEARCH_ENGINE=tfidf)")
+        return {"documents": len(docs), "search": "tfidf"}
     try:
         import chromadb
         client = chromadb.PersistentClient(path=str(CHROMA_DIR))
@@ -168,6 +171,18 @@ def run(run_id=None) -> dict:
 def _load():
     if "docs" not in _cache:
         docs = json.loads(DOCS_FILE.read_text()) if DOCS_FILE.exists() else []
+        if not docs:
+            # Hosts like Render's free tier wipe the disk on every restart and deploy.
+            # Rebuild the search documents from the database instead of answering with nothing.
+            try:
+                docs = build_docs()
+                try:
+                    DOCS_FILE.parent.mkdir(parents=True, exist_ok=True)
+                    DOCS_FILE.write_text(json.dumps(docs))
+                except OSError:
+                    pass
+            except Exception as e:
+                print(f"Could not rebuild search documents: {type(e).__name__}: {e}", flush=True)
         _cache["docs"] = docs
         _cache["by_id"] = {d["id"]: d for d in docs}
         _cache["companies"] = {d["id"]: d["text"].split(" has ")[0].split(" (")[0].lower()
@@ -188,6 +203,8 @@ def _tfidf_search(q, k):
 
 
 def _vector_search(q, k):
+    if SEARCH_ENGINE == "tfidf":
+        return _tfidf_search(q, k)
     try:
         if "chroma" not in _cache:
             import chromadb

@@ -5,7 +5,7 @@
   python3 -m pipeline.run --step fetch   a single step
 """
 import argparse, json, re, secrets, traceback
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 import bcrypt
 import pandas as pd
 from sqlalchemy import select
@@ -24,8 +24,35 @@ def hash_pw(p: str) -> str:
     return bcrypt.hashpw(p.encode(), bcrypt.gensalt()).decode()
 
 
-def start_run(trigger: str) -> int:
+STALE_AFTER_MIN = 30   # a normal run takes a few minutes; anything older was cut off by a restart
+
+
+class RunInProgress(RuntimeError):
+    pass
+
+
+def close_stale_runs() -> int:
+    """Runs still marked 'running' long after they started were killed (for example by a
+    server restart). Mark them failed so the admin page tells the truth."""
+    cutoff = utcnow() - timedelta(minutes=STALE_AFTER_MIN)
     with SessionLocal() as s:
+        stale = s.scalars(select(PipelineRun).where(PipelineRun.status == "running",
+                                                    PipelineRun.started_at < cutoff)).all()
+        for r in stale:
+            r.status, r.finished_at = "failed", utcnow()
+            r.error = "Stopped before finishing (server restarted or ran out of time). The next run catches up."
+        s.commit()
+        return len(stale)
+
+
+def start_run(trigger: str) -> int:
+    """Refuses to start while another run is genuinely in progress: two runs writing the same
+    records at once could double up data. The laptop and the server share one database."""
+    close_stale_runs()
+    with SessionLocal() as s:
+        busy = s.scalar(select(PipelineRun.id).where(PipelineRun.status == "running"))
+        if busy:
+            raise RunInProgress(f"Run {busy} is still in progress")
         r = PipelineRun(trigger=trigger, steps={})
         s.add(r)
         s.commit()
@@ -68,8 +95,9 @@ def run_step(run_id: int, name: str) -> dict:
         elif name == "index":
             res = rag.run(run_id)
         elif name == "alerts":
-            ids = prev.get("clean", {}).get("result", {}).get("new_record_ids", [])
-            res = alerts.run(run_id, ids)
+            # Check every match, not just today's new records. Alerts already sent are skipped,
+            # so if an earlier run crashed after cleaning, its alerts still go out now.
+            res = alerts.run(run_id, None)
         else:
             res = alerts.followups(run_id)
         data = {"status": "ok", "result": res, "seconds": round((utcnow() - t0).total_seconds(), 1)}
@@ -119,6 +147,7 @@ def seed_users():
             old = None if email in keep else s.scalar(select(User).where(User.email == email))
             if old:
                 old.role = "pharmacist"
+                old.email_alerts = False   # these addresses don't exist; bounces hurt email delivery
                 old.password_hash = hash_pw(secrets.token_urlsafe(32))  # random, never shown: account is dead
 
         if not SEED_DEMO:

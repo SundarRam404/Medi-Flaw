@@ -59,6 +59,10 @@ FOLLOWUP_DAYS = int(os.getenv("FOLLOWUP_DAYS", "3"))
 
 N8N_WEBHOOK_URL = os.getenv("RUN_NOW_WEBHOOK_URL", "")
 
+# "auto" tries ChromaDB vector search and falls back to TF-IDF.
+# "tfidf" never loads ChromaDB: use it on small servers (512 MB), where the embedding model runs out of memory.
+SEARCH_ENGINE = os.getenv("SEARCH_ENGINE", "auto").strip().lower()
+
 DATA_DIR = ROOT / "data"
 INCOMING_DIR = DATA_DIR / "incoming"
 RAG_DOCS_DIR = DATA_DIR / "rag_docs"
