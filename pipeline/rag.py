@@ -111,6 +111,20 @@ def build_docs() -> list[dict]:
                      f"{_top(Counter(g[g['ym'] > r['ym'].max() - pd.DateOffset(months=12)]['manufacturer']), 6) or 'none'}. "
                      f"Failure types: {_top(Counter(g['category']), 5)}. HIGH danger: {(g['danger'] == 'HIGH').sum()}. "
                      f"Note: Medi-Flaw only records failed batches, not how many batches each company sells."})
+    span = f"{_m(r['ym'].min())} to {_m(r['ym'].max())}"
+    top = c.sort_values("total_failures", ascending=False).head(15)
+    docs.append({"id": "L1", "kind": "ranking", "ref": "most_failures", "text":
+                 f"Companies with the most failed batches overall, all years ({span}), ranked from highest: "
+                 + ", ".join(f"{i}. {x.name} ({x.total_failures})" for i, x in enumerate(top.itertuples(), 1))
+                 + f". In total {len(c)} companies have at least one failed batch."})
+    risky = c[c["risk_score"].notna()].sort_values("risk_score", ascending=False).head(15)
+    if len(risky):
+        docs.append({"id": "L2", "kind": "ranking", "ref": "most_likely_next", "text":
+                     "Companies most likely to have another failed batch in the next 6 months, by Medi-Flaw risk score, "
+                     "ranked from highest: "
+                     + ", ".join(f"{i}. {x.name} ({x.risk_score}%, {x.risk_band}, {x.total_failures} failures so far)"
+                                 for i, x in enumerate(risky.itertuples(), 1))
+                     + ". This is a statistical estimate from past failures, not a finding against the company."})
     docs.append({"id": "T1", "kind": "total", "ref": "all", "text":
                  f"Medi-Flaw holds {len(r)} failed batches from CDSCO monthly lists, from {_m(r['ym'].min())} "
                  f"to {_m(r['ym'].max())}, made by {r['company_id'].nunique()} companies. "
@@ -258,6 +272,13 @@ def retrieve(q: str, k: int = 12) -> list[dict]:
             found.append(d["id"])
     if re.search(r"\b(total|how many|overall|all records)\b", ql):
         found.append("T1")
+    asks_ranking = re.search(r"\b(most|top|highest|worst|biggest|leading|rank\w*|repeat\w*|often|frequent\w*)\b", ql)
+    about_companies = re.search(r"\b(compan\w*|manufactur\w*|maker\w*|firm\w*|who)\b", ql)
+    if asks_ranking and about_companies:
+        if not re.search(r"\b(19|20)\d{2}\b", ql):      # a year question is answered by that year's document
+            found.insert(0, "L1")
+        if re.search(r"\b(risk\w*|likely|next|future|predict\w*|chance)\b", ql):
+            found.insert(0, "L2")                          # inserted last so it comes first
     found += _vector_search(q, k)
     out, seen = [], set()
     for i in found:
