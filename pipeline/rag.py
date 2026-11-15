@@ -16,7 +16,7 @@ from .config import (DATA_DIR, CHROMA_DIR, RAG_DOCS_DIR, GROQ_API_KEY, GROQ_MODE
                      GEMINI_API_KEY, GEMINI_MODEL, LLM_ORDER, OLLAMA_URL, OLLAMA_MODEL)
 
 DOCS_FILE = DATA_DIR / "search_docs.json"
-REFUSAL = "No evidence found in PharmaAudit records."
+REFUSAL = "No evidence found in Medi-Flaw records."
 MEDICAL = re.compile(r"\b(dose|dosage|should i (take|stop|give)|side effects?|treat(ment)?|cure|"
                      r"pregnan|prescri|how much .* take)\b", re.I)
 MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August",
@@ -110,9 +110,9 @@ def build_docs() -> list[dict]:
                      f"Failures since {(r['ym'].max() - pd.DateOffset(months=12)):%B %Y}: "
                      f"{_top(Counter(g[g['ym'] > r['ym'].max() - pd.DateOffset(months=12)]['manufacturer']), 6) or 'none'}. "
                      f"Failure types: {_top(Counter(g['category']), 5)}. HIGH danger: {(g['danger'] == 'HIGH').sum()}. "
-                     f"Note: PharmaAudit only records failed batches, not how many batches each company sells."})
+                     f"Note: Medi-Flaw only records failed batches, not how many batches each company sells."})
     docs.append({"id": "T1", "kind": "total", "ref": "all", "text":
-                 f"PharmaAudit holds {len(r)} failed batches from CDSCO monthly lists, from {_m(r['ym'].min())} "
+                 f"Medi-Flaw holds {len(r)} failed batches from CDSCO monthly lists, from {_m(r['ym'].min())} "
                  f"to {_m(r['ym'].max())}, made by {r['company_id'].nunique()} companies. "
                  f"Danger levels: {_top(Counter(r['danger']))}."})
     # extra reference files (for example the Drugs and Cosmetics Act PDF)
@@ -252,10 +252,10 @@ def retrieve(q: str, k: int = 12) -> list[dict]:
 
 # ------------------------------------------------------------------ language model
 SYSTEM = (
-    "You answer questions for PharmaAudit, a site that lists medicine batches that failed CDSCO quality tests in India. "
+    "You answer questions for Medi-Flaw, a site that lists medicine batches that failed CDSCO quality tests in India. "
     "Use ONLY the numbered sources given. After every fact put the source id in square brackets, like [R12] or [C5]. "
     "If the sources answer only part of the question, answer that part and say plainly what the records cannot tell. "
-    "PharmaAudit has failed batches only, not sales or supply figures, so never call a company safe or best; "
+    "Medi-Flaw has failed batches only, not sales or supply figures, so never call a company safe or best; "
     "you may say which companies have the most or fewest failures in the records. "
     f"If the sources have nothing relevant at all, reply exactly: {REFUSAL} "
     "Never give medical advice. Write short plain paragraphs or a short list. Do not use tables or markdown headings. "
@@ -317,7 +317,7 @@ def _llm(question, docs):
 def ask(question: str, log: bool = True) -> dict:
     q = question.strip()[:500]
     if MEDICAL.search(q):
-        res = {"answer": "PharmaAudit only shows published test results. Please ask a doctor or pharmacist "
+        res = {"answer": "Medi-Flaw only shows published test results. Please ask a doctor or pharmacist "
                          "about doses or treatment.", "sources": [], "engine": "rule", "refused": True}
     else:
         docs = retrieve(q)

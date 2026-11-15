@@ -49,7 +49,7 @@ def alert_text(user: User, rec: Record, token: str) -> tuple[str, str]:
     subject = f"Batch {rec.batch_no} on your list failed a CDSCO quality test"
     body = f"""Hello {user.name},
 
-A batch on your PharmaAudit watchlist appears in the latest CDSCO list of medicines
+A batch on your Medi-Flaw watchlist appears in the latest CDSCO list of medicines
 that are Not of Standard Quality.
 
   Medicine      : {rec.drug_name}
@@ -69,7 +69,7 @@ What to do
 
 Record: {APP_URL}/batch/{rec.batch_norm}
 
-PharmaAudit
+Medi-Flaw
 (This alert is based only on the official CDSCO list. Please check the original list before acting.)
 """
     return subject, body
