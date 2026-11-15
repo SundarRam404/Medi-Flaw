@@ -121,8 +121,12 @@ def followups(run_id=None, days: int | None = None) -> dict:
     cutoff = utcnow() - timedelta(days=days)
     n = 0
     with SessionLocal() as s:
-        due = s.scalars(select(Alert).where(Alert.acknowledged_at.is_(None), Alert.followup_at.is_(None),
-                                            Alert.sent_at <= cutoff)).all()
+        # Remind only when the first email actually arrived, and only people who still want email.
+        # Reminding failed or switched-off alerts means mail to dead addresses, and bounces hurt delivery.
+        due = s.scalars(select(Alert).join(User, User.id == Alert.user_id)
+                        .where(Alert.acknowledged_at.is_(None), Alert.followup_at.is_(None),
+                               Alert.sent_at <= cutoff, Alert.delivery == "sent",
+                               User.email_alerts.is_not(False))).all()
         for a in due:
             body = f"Reminder: you have not confirmed this alert yet.\n\n{a.body}"
             send_email(a.to_email, "Reminder: " + a.subject, body)

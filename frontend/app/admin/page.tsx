@@ -11,6 +11,7 @@ const STEP_NAMES: Record<string, string> = {
 
 function stepSummary(name: string, r: any) {
   if (!r) return "";
+  if (r.skipped) return `Skipped: ${r.skipped}`;
   switch (name) {
     case "fetch": return `${r.new_total ?? 0} new rows. Portal: ${r.portal}${r.files_imported?.length ? `. Files: ${r.files_imported.join(", ")}` : ""}`;
     case "clean": return `${r.added ?? 0} added, ${r.duplicates ?? 0} duplicates, ${r.new_companies ?? 0} new companies`;
@@ -58,13 +59,14 @@ export default function Admin() {
 
   return (
     <div>
-      <PageTitle title="Admin" sub="Monthly runs, alert emails and model results." />
+      <PageTitle title="Admin" sub="Daily runs, alert emails and model results." />
 
-      <Box title="Monthly update">
+      <Box title="Daily update">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="max-w-2xl text-sm text-muted">
-            Runs on the 1st of every month at 6 AM through n8n: fetch new CDSCO data, clean it, update risk scores,
-            rebuild the search index, email shops whose batches appear, and send reminders for alerts nobody confirmed.
+            Runs every morning at 5 AM: fetch new CDSCO data, clean it, email shops whose batches appear, and send
+            reminders for alerts nobody confirmed. Risk scores and the search index are rebuilt when new data arrives,
+            and fully on the 1st of each month.
             {runs && (runs.n8n ? " Run now goes through n8n." : " n8n link not set, Run now runs on the server.")}
           </p>
           <button className="btn" onClick={runNow}>Run now</button>

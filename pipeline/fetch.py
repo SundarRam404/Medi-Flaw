@@ -143,7 +143,8 @@ def run(run_id=None) -> dict:
         report["new_from_portal"] = store_rows(got, origin="portal", run_id=run_id)
         report["portal"] = f"ok, {len(got)} rows read"
     except Exception as e:
-        report["portal"] = f"unreachable ({type(e).__name__}), using backup files"
+        report["portal"] = f"unreachable ({type(e).__name__}: {str(e)[:220]}), using backup files"
+        print(f"CDSCO portal unreachable: {type(e).__name__}: {e}", flush=True)
 
     # backup / manual drop folder
     INCOMING_DIR.mkdir(parents=True, exist_ok=True)
