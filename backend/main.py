@@ -126,7 +126,8 @@ def admin_user(u: User = Depends(current_user)) -> User:
 
 def user_json(u: User):
     return {"id": u.id, "email": u.email, "name": u.name, "organisation": u.organisation, "role": u.role,
-            "account_type": u.account_type or "business"}
+            "account_type": u.account_type or "business", "avatar": u.avatar,
+            "auth_provider": u.auth_provider or "password"}
 
 
 def _code_hash(email: str, code: str) -> str:
@@ -243,6 +244,26 @@ def google_login(body: GoogleIn):
 def auth_config():
     from pipeline.config import GOOGLE_CLIENT_ID
     return {"google_client_id": GOOGLE_CLIENT_ID or None}
+
+
+class PasswordIn(BaseModel):
+    current: str
+    new: str
+
+
+@app.post("/api/auth/password")
+def change_password(body: PasswordIn, u: User = Depends(current_user)):
+    if len(body.new) < 8:
+        raise HTTPException(400, "Use a new password with at least 8 characters")
+    with SessionLocal() as s:
+        x = s.get(User, u.id)
+        if (x.auth_provider or "password") == "google":
+            raise HTTPException(400, "You sign in with Google, so there is no password to change")
+        if not bcrypt.checkpw(body.current.encode(), x.password_hash.encode()):
+            raise HTTPException(400, "Your current password is wrong")
+        x.password_hash = pipeline.hash_pw(body.new)
+        s.commit()
+    return {"ok": True}
 
 
 @app.get("/api/auth/me")
@@ -736,6 +757,10 @@ def watch_delete(wid: int, u: User = Depends(current_user)):
 class SettingsIn(BaseModel):
     email_alerts: bool | None = None
     extra_emails: list[str] | None = None
+    avatar: str | None = None
+
+
+AVATARS = {f"a{i}" for i in range(1, 11)}
 
 
 @app.get("/api/me/settings")
@@ -744,7 +769,8 @@ def my_settings(u: User = Depends(current_user)):
     return {"email_alerts": u.email_alerts is not False,
             "email_ready": bool((BREVO_API_KEY and MAIL_FROM) or (SMTP_USER and SMTP_PASSWORD)),
             "email": u.email, "name": u.name, "organisation": u.organisation,
-            "account_type": u.account_type or "business", "extra_emails": u.extra_emails or []}
+            "account_type": u.account_type or "business", "extra_emails": u.extra_emails or [],
+            "avatar": u.avatar}
 
 
 @app.patch("/api/me/settings")
@@ -753,6 +779,10 @@ def set_settings(body: SettingsIn, u: User = Depends(current_user)):
         x = s.get(User, u.id)
         if body.email_alerts is not None:
             x.email_alerts = body.email_alerts
+        if body.avatar is not None:
+            if body.avatar not in AVATARS:
+                raise HTTPException(400, "Unknown avatar")
+            x.avatar = body.avatar
         if body.extra_emails is not None:
             from email_validator import validate_email, EmailNotValidError
             clean = []

@@ -100,6 +100,7 @@ class User(Base):
     account_type: Mapped[str | None] = mapped_column(String(20), default="business")  # business / personal
     auth_provider: Mapped[str | None] = mapped_column(String(20), default="password")  # password / google
     extra_emails: Mapped[list | None] = mapped_column(JSON, default=list)  # staff who also get alerts (business)
+    avatar: Mapped[str | None] = mapped_column(String(20))  # one of the 10 preset avatars (a1..a10)
     password_hash: Mapped[str] = mapped_column(String(200))
     email_alerts: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
@@ -205,6 +206,7 @@ def init_db():
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS account_type varchar(20) DEFAULT 'business'",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_provider varchar(20) DEFAULT 'password'",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS extra_emails json",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar varchar(20)",
             "ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS taken_by varchar(80)",
             "ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS manufacturer varchar(300)",
             "ALTER TABLE watchlist ADD COLUMN IF NOT EXISTS quantity integer",
