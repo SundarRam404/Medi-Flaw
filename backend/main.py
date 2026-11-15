@@ -468,13 +468,23 @@ def _add_items(s, uid, items: list[WatchIn], source: str) -> int:
     return added
 
 
+_alert_lock = threading.Lock()
+
+
 def _check_now():
-    """Batches that are already in a failed list get an alert straight away."""
+    """Batches that are already in a failed list get an alert straight away.
+    Runs in the background so the user's request returns at once, and one check
+    at a time so two quick clicks can never send the same alert twice."""
     from pipeline import alerts
-    try:
-        alerts.run(None, None)
-    except Exception:
-        pass
+
+    def work():
+        with _alert_lock:
+            try:
+                alerts.run(None, None)
+            except Exception as e:
+                print(f"Alert check failed: {type(e).__name__}: {e}", flush=True)
+
+    threading.Thread(target=work, daemon=True).start()
 
 
 @app.get("/api/watchlist")

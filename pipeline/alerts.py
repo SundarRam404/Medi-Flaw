@@ -1,26 +1,47 @@
 """Step 5 - match new failed batches against every shop's watchlist and send emails.
 If Gmail is not set up, emails are kept in the outbox (alerts table) and shown on the site."""
 import secrets, smtplib
+import requests
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 from sqlalchemy import select
 from .db import utcnow, SessionLocal, Record, WatchItem, Alert, User
-from .config import SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, MAIL_FROM, APP_URL, FOLLOWUP_DAYS
+from .config import (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, MAIL_FROM, MAIL_FROM_NAME,
+                     BREVO_API_KEY, APP_URL, FOLLOWUP_DAYS)
+
+
+def _send_brevo(to: str, subject: str, body: str) -> str:
+    r = requests.post("https://api.brevo.com/v3/smtp/email", timeout=15,
+                      headers={"api-key": BREVO_API_KEY, "accept": "application/json"},
+                      json={"sender": {"name": MAIL_FROM_NAME, "email": MAIL_FROM},
+                            "to": [{"email": to}], "subject": subject, "textContent": body})
+    if r.status_code in (200, 201, 202):
+        return "sent"
+    print(f"Brevo send failed {r.status_code}: {r.text[:300]}", flush=True)
+    return "failed"
 
 
 def send_email(to: str, subject: str, body: str) -> str:
+    """Brevo (HTTPS) if configured, otherwise Gmail SMTP. Returns sent / failed / outbox."""
+    if BREVO_API_KEY and MAIL_FROM:
+        try:
+            return _send_brevo(to, subject, body)
+        except Exception as e:
+            print(f"Brevo error: {type(e).__name__}: {e}", flush=True)
+            return "failed"
     if not (SMTP_USER and SMTP_PASSWORD):
         return "outbox"
     try:
         msg = EmailMessage()
         msg["From"], msg["To"], msg["Subject"] = MAIL_FROM, to, subject
         msg.set_content(body)
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as s:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as s:
             s.starttls()
             s.login(SMTP_USER, SMTP_PASSWORD)
             s.send_message(msg)
         return "sent"
-    except Exception:
+    except Exception as e:
+        print(f"SMTP error: {type(e).__name__}: {e}", flush=True)
         return "failed"
 
 

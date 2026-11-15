@@ -52,6 +52,9 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 MAIL_FROM = os.getenv("MAIL_FROM", SMTP_USER)
+MAIL_FROM_NAME = os.getenv("MAIL_FROM_NAME", "Medi-Flaw Alerts")
+# Brevo sends over HTTPS (port 443). Use it on hosts that block SMTP ports, such as Render's free tier.
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", "")
 FOLLOWUP_DAYS = int(os.getenv("FOLLOWUP_DAYS", "3"))
 
 N8N_WEBHOOK_URL = os.getenv("RUN_NOW_WEBHOOK_URL", "")

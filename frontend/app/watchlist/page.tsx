@@ -31,6 +31,7 @@ export default function MyMedicines() {
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
   const [msg, setMsg] = useState("");
+  const [adding, setAdding] = useState(false);
   const [filter, setFilter] = useState({ month: "", status: "", q: "" });
   const [open, setOpen] = useState<number | null>(null);
   const csvRef = useRef<HTMLInputElement>(null);
@@ -73,15 +74,21 @@ export default function MyMedicines() {
   }, [items]);
 
   async function addOne(e: React.FormEvent) {
-    e.preventDefault(); setErr(""); setMsg("");
+    e.preventDefault();
+    if (adding) return;
+    setAdding(true); setErr(""); setMsg("");
     try {
       const body: any = { ...f, quantity: f.quantity ? Number(f.quantity) : null, purchased_on: f.purchased_on || null };
       const d = await api("/api/watchlist", { method: "POST", body: JSON.stringify(body) });
       setItems(d.items); setF({ batch_no: "", drug_name: "", manufacturer: "", quantity: "", purchased_on: "", supplier: "" });
       const added = d.items.find((i: any) => i.batch_no === body.batch_no.trim());
+      setErr("");
       setMsg(added?.failed ? `Added. This batch is in a CDSCO failed list. Stop selling it.` : "Added. No failure on record for this batch.");
+      // the alert email is sent in the background; refresh the alert list once it has had time
       api("/api/alerts").then((x) => setAlerts(x.items));
+      setTimeout(() => api("/api/alerts").then((x) => setAlerts(x.items)).catch(() => {}), 6000);
     } catch (e: any) { setErr(e.message); }
+    finally { setAdding(false); }
   }
 
   async function uploadCSV() {
@@ -197,7 +204,7 @@ export default function MyMedicines() {
             <input className="input" placeholder="Quantity" type="number" value={f.quantity} onChange={(e) => setF({ ...f, quantity: e.target.value })} />
             <input className="input" type="date" title="Bought on" value={f.purchased_on} onChange={(e) => setF({ ...f, purchased_on: e.target.value })} />
             <input className="input sm:col-span-2" placeholder="Supplier" value={f.supplier} onChange={(e) => setF({ ...f, supplier: e.target.value })} />
-            <button className="btn">Add</button>
+            <button className="btn" disabled={adding}>{adding ? "Adding..." : "Add"}</button>
           </form>
         )}
         {tab === "csv" && (
@@ -317,7 +324,7 @@ export default function MyMedicines() {
               <li key={a.id} className="py-2 text-sm">
                 <button className="text-left hover:underline" onClick={() => setOpen(open === a.id ? null : a.id)}>{a.subject}</button>
                 <span className="ml-2 text-xs text-muted">
-                  {dateTime(a.sent_at)} &middot; {a.delivery === "sent" ? "emailed" : a.delivery === "off" ? "email alerts off" : "saved (email not set up)"}
+                  {dateTime(a.sent_at)} &middot; {a.delivery === "sent" ? "emailed" : a.delivery === "off" ? "email alerts off" : a.delivery === "outbox" ? "saved (email not set up)" : "email could not be sent"}
                 </span>
                 {open === a.id && <pre className="mt-2 whitespace-pre-wrap rounded bg-paper p-3 font-mono text-xs">{a.body}</pre>}
               </li>
