@@ -196,7 +196,7 @@ export default function Welcome() {
 
           <p className="mt-6 text-center text-[11px] leading-relaxed text-[#a8988f]">
             Your email is used only for batch alerts. You can turn alerts off or delete your list any time.
-            {" "}<Link href="/" onClick={(e) => { e.preventDefault(); guest(); }} className="text-[#a8988f] underline">Skip</Link>
+            {" "}<Link href="/privacy" className="text-[#a8988f] underline">Privacy</Link> &middot; <Link href="/terms" className="text-[#a8988f] underline">Terms</Link>
           </p>
         </div>
       </section>
