@@ -14,26 +14,6 @@ const KINDS: { k: Kind; title: string; who: string }[] = [
   { k: "personal", title: "Personal", who: "For you and your family's medicines at home" },
 ];
 
-const WITHOUT = [
-  "Check if any batch failed a government lab test",
-  "See each company's failure history and risk",
-  "Reports, raw data and Ask questions",
-  "No email needed. Nothing you do is saved",
-];
-const WITH: Record<Kind, string[]> = {
-  business: [
-    "Save your whole stock: one by one, CSV, invoice PDF or photo",
-    "Automatic email the day a batch you hold fails",
-    "Reminders until you act, and ready-to-print return letters",
-    "See which suppliers and makers are high-risk",
-  ],
-  personal: [
-    "Save the medicines your family takes",
-    "Automatic email the day one of them fails",
-    "Reminder if you miss the first email",
-    "Free. Your email is used only for alerts",
-  ],
-};
 
 function loadGoogle(): Promise<any> {
   if (window.google?.accounts?.id) return Promise.resolve(window.google);
@@ -88,7 +68,7 @@ export default function Welcome() {
         },
       });
       gBox.current.innerHTML = "";
-      g.accounts.id.renderButton(gBox.current, { theme: "outline", size: "large", shape: "pill", text: "continue_with", width: 340 });
+      g.accounts.id.renderButton(gBox.current, { theme: "outline", size: "large", shape: "pill", text: "continue_with", width: Math.min(340, gBox.current.offsetWidth || 340) });
     }).catch(() => setGid(null));
     return () => { live = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -112,116 +92,69 @@ export default function Welcome() {
   }
 
   return (
-    <div className="grid min-h-screen bg-paper lg:grid-cols-[1.05fr_1fr]">
-      {/* left: picture and the why */}
-      <section className="relative overflow-hidden">
-        <img src="/landscape.svg" alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
-        <div className="relative flex h-full flex-col px-6 py-8 md:px-12 md:py-10">
-          <Logo size={26} />
-          <div className="mt-14 max-w-xl lg:mt-auto">
-            <h1 className="h-display text-4xl md:text-6xl">Know if a medicine batch failed, before it reaches anyone.</h1>
-            <p className="mt-4 max-w-md text-[#5b4d47]">
-              Medi-Flaw checks every batch against the Government of India&apos;s (CDSCO) &ldquo;Not of Standard Quality&rdquo; lists, updated every day.
-            </p>
-          </div>
-          <div className="mt-8 grid gap-3 pb-2 md:grid-cols-2">
-            <Why title="Without an account" tag="Instant" items={WITHOUT} />
-            <Why title="With a free account" tag={kind === "business" ? "Pharmacy & Business" : "Personal"} items={WITH[kind]} strong />
-          </div>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-6">
+      <img src="/landscape.svg" alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
+      <div className="relative w-full max-w-[400px] rounded-3xl border border-white/70 bg-white/85 p-6 shadow-soft backdrop-blur-xl sm:p-7">
+        <Logo size={22} />
+        <h1 className="h-display mt-5 text-[34px]">{mode === "login" ? "Welcome" : "Create account"}</h1>
+        <p className="mt-1 text-sm text-muted">Check any medicine batch against government lab results.</p>
+
+        <div className="mt-5 grid grid-cols-2 gap-1 rounded-full bg-sand p-1 text-sm">
+          {KINDS.map((x) => (
+            <button key={x.k} type="button" onClick={() => setKind(x.k)} title={x.who}
+              className={`rounded-full py-1.5 transition ${kind === x.k ? "bg-white font-medium text-ink shadow-sm" : "text-muted hover:text-ink"}`}>
+              {x.k === "business" ? "Pharmacy" : "Personal"}
+            </button>
+          ))}
         </div>
-      </section>
 
-      {/* right: choose and sign in */}
-      <section className="flex items-center justify-center px-5 py-10 md:px-10">
-        <div className="w-full max-w-md">
-          <h2 className="h-display text-4xl">{mode === "login" ? "Welcome back" : "Create your account"}</h2>
-          <p className="mt-2 text-sm text-muted">{mode === "login" ? "Log in to see your medicines and alerts." : "Free. Takes 30 seconds."}</p>
+        {gid && (
+          <>
+            <div ref={gBox} className="mt-4 flex h-[44px] justify-center" />
+            <div className="my-3 flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" /></div>
+          </>
+        )}
 
-          <p className="label mt-7">I am using Medi-Flaw for</p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {KINDS.map((x) => (
-              <button key={x.k} type="button" onClick={() => setKind(x.k)}
-                className={`rounded-2xl border p-3.5 text-left transition ${kind === x.k ? "border-ink bg-white shadow-soft" : "border-line bg-white/60 hover:border-[#d9c7ba]"}`}>
-                <span className="flex items-center gap-2 text-sm font-medium">
-                  <span className={`grid h-4 w-4 place-items-center rounded-full border ${kind === x.k ? "border-ink" : "border-[#cbbbb0]"}`}>
-                    {kind === x.k && <span className="h-2 w-2 rounded-full bg-ink" />}
-                  </span>
-                  {x.title}
-                </span>
-                <span className="mt-1 block text-xs leading-snug text-muted">{x.who}</span>
-              </button>
-            ))}
-          </div>
-
-          {gid && (
+        <form onSubmit={submit} className={`space-y-2.5 ${gid ? "" : "mt-4"}`}>
+          {mode === "register" && (
             <>
-              <div ref={gBox} className="mt-6 flex justify-center" />
-              <div className="my-5 flex items-center gap-3 text-xs text-muted"><span className="h-px flex-1 bg-line" />or with email<span className="h-px flex-1 bg-line" /></div>
+              <input className="input py-2" required placeholder="Your name" value={f.name} onChange={set("name")} autoComplete="name" />
+              {kind === "business" && (
+                <input className="input py-2" required placeholder="Pharmacy or business name" value={f.organisation} onChange={set("organisation")} autoComplete="organization" />
+              )}
             </>
           )}
+          <input className="input py-2" type="email" required placeholder="Email" value={f.email} onChange={set("email")} autoComplete="email" />
+          <input className="input py-2" type="password" required minLength={mode === "register" ? 8 : 1} value={f.password} onChange={set("password")}
+            placeholder={mode === "register" ? "Password (8+ characters)" : "Password"} autoComplete={mode === "login" ? "current-password" : "new-password"} />
+          {err && <p className="rounded-xl bg-bad-light px-3 py-2 text-sm text-bad">{err}</p>}
+          <button className="btn w-full py-2.5" disabled={busy}>{busy ? "Please wait..." : mode === "login" ? "Log in" : "Create account"}</button>
+        </form>
 
-          <form onSubmit={submit} className={`space-y-3 ${gid ? "" : "mt-6"}`}>
-            {mode === "register" && (
-              <>
-                <Field label="Your name"><input className="input" required value={f.name} onChange={set("name")} autoComplete="name" /></Field>
-                {kind === "business" && (
-                  <Field label="Pharmacy or business name">
-                    <input className="input" required value={f.organisation} onChange={set("organisation")} placeholder="e.g. Sri Ram Medicals, Chennai" autoComplete="organization" />
-                  </Field>
-                )}
-              </>
-            )}
-            <Field label="Email"><input className="input" type="email" required value={f.email} onChange={set("email")} autoComplete="email" /></Field>
-            <Field label="Password">
-              <input className="input" type="password" required minLength={mode === "register" ? 8 : 1} value={f.password} onChange={set("password")}
-                autoComplete={mode === "login" ? "current-password" : "new-password"} placeholder={mode === "register" ? "At least 8 characters" : ""} />
-            </Field>
-            {err && <p className="rounded-xl bg-bad-light px-3.5 py-2.5 text-sm text-bad">{err}</p>}
-            <button className="btn w-full py-3" disabled={busy}>{busy ? "Please wait..." : mode === "login" ? "Log in" : "Create account"}</button>
-          </form>
+        <p className="mt-3 text-center text-sm text-muted">
+          {mode === "login" ? "New here? " : "Have an account? "}
+          <button className="font-medium text-brand hover:underline" onClick={() => { setMode(mode === "login" ? "register" : "login"); setErr(""); }}>
+            {mode === "login" ? "Create a free account" : "Log in"}
+          </button>
+        </p>
 
-          <p className="mt-4 text-center text-sm text-muted">
-            {mode === "login" ? "New here? " : "Already have an account? "}
-            <button className="font-medium text-brand hover:underline" onClick={() => { setMode(mode === "login" ? "register" : "login"); setErr(""); }}>
-              {mode === "login" ? "Create a free account" : "Log in"}
-            </button>
-          </p>
-
-          <div className="mt-8 rounded-2xl border border-dashed border-[#d9c7ba] p-4">
-            <button onClick={guest} className="btn-light w-full py-3">Continue without an account &rarr;</button>
-            <p className="mt-2.5 text-center text-xs leading-relaxed text-muted">
-              You can check any batch, company or report. Nothing is saved and no alerts are sent.
-            </p>
-          </div>
-
-          <p className="mt-6 text-center text-[11px] leading-relaxed text-[#a8988f]">
-            Your email is used only for batch alerts. You can turn alerts off or delete your list any time.
-            {" "}<Link href="/privacy" className="text-[#a8988f] underline">Privacy</Link> &middot; <Link href="/terms" className="text-[#a8988f] underline">Terms</Link>
-          </p>
+        <div className="mt-4 flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-[#5b4d47]">
+          {["Save your batches", "Email alerts if one fails", "Free"].map((t) => (
+            <span key={t} className="flex items-center gap-1"><span className="text-brand">&#10003;</span>{t}</span>
+          ))}
         </div>
-      </section>
-    </div>
-  );
-}
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <label className="block"><span className="label mb-1 block">{label}</span>{children}</label>;
-}
+        <div className="mt-4 border-t border-line pt-4 text-center">
+          <button onClick={guest} className="btn-light w-full py-2.5">Continue without an account</button>
+          <p className="mt-1.5 text-[11px] text-muted">Search freely. Nothing is saved.</p>
+        </div>
 
-function Why({ title, tag, items, strong }: { title: string; tag: string; items: string[]; strong?: boolean }) {
-  return (
-    <div className={`glass p-5 ${strong ? "bg-white/75" : ""}`}>
-      <div className="flex items-center justify-between gap-2">
-        <h3 className="text-[15px] font-medium">{title}</h3>
-        <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${strong ? "bg-ink text-white" : "bg-white/80 text-ink"}`}>{tag}</span>
+        <p className="mt-3 text-center text-[11px] text-[#a8988f]">
+          <Link href="/privacy" className="text-[#a8988f]">Privacy</Link> &middot; <Link href="/terms" className="text-[#a8988f]">Terms</Link>
+        </p>
       </div>
-      <ul className="mt-3 space-y-2 text-sm text-[#4a3d38]">
-        {items.map((t) => (
-          <li key={t} className="flex gap-2">
-            <span className={`mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full ${strong ? "bg-brand" : "bg-[#9c7a9e]"}`} />{t}
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
+
+
