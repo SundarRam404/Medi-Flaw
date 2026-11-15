@@ -10,7 +10,6 @@ const LINKS = [
   ["/companies", "Companies"],
   ["/reports", "Reports"],
   ["/data", "Data"],
-  ["/ask", "Ask"],
 ];
 
 export default function Header() {

@@ -3,6 +3,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import Logo from "@/components/Logo";
+import RoboChat from "@/components/RoboChat";
 import { getUser } from "@/lib/api";
 
 // Pages that open without the welcome screen (links from alert emails, printouts, the welcome page itself)
@@ -39,6 +40,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <span>Data: CDSCO &ldquo;Not of Standard Quality&rdquo; drug alerts, Government of India. Information only, not medical advice.</span>
         </div>
       </footer>
+      <RoboChat />
     </div>
   );
 }
