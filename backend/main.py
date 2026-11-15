@@ -122,6 +122,12 @@ def me(u: User = Depends(current_user)):
 
 
 # ------------------------------------------------------------------ public data
+@app.get("/api/health")
+def health():
+    """For uptime pings. Answers without touching the database, so the database can still sleep."""
+    return {"ok": True}
+
+
 @app.get("/api/stats")
 def stats():
     with SessionLocal() as s:

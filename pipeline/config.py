@@ -39,7 +39,8 @@ if SEED_DEMO and not (DEMO_EMAIL and len(DEMO_PASSWORD) >= 12):
     raise RuntimeError("SEED_DEMO=1 needs DEMO_EMAIL and a DEMO_PASSWORD of at least 12 characters.")
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile,openai/gpt-oss-120b")
+# Groq retired llama-3.3-70b-versatile on 16 Aug 2026. Tried in order; the second is the fallback.
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b,openai/gpt-oss-20b")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
 # order to try language models in; the first one that answers is used

@@ -159,6 +159,7 @@ def run(run_id=None) -> dict:
     docs = build_docs()
     DOCS_FILE.write_text(json.dumps(docs))
     _cache.clear()
+    _answers.clear()
     engine_used = "tfidf"
     if SEARCH_ENGINE == "tfidf":
         (DATA_DIR / "search_engine.txt").write_text("tfidf (SEARCH_ENGINE=tfidf)")
@@ -315,13 +316,14 @@ def _llm(question, docs):
                     body = {"model": model, "messages": msgs, "temperature": 0, "max_tokens": 1500}
                     if model.startswith("openai/gpt-oss"):
                         body["reasoning_effort"] = "low"
-                    for attempt in range(3):   # free tier: wait and retry when the per-minute limit is hit
+                    for attempt in range(2):   # free tier: one short wait when the per-minute limit is hit
                         r = httpx.post("https://api.groq.com/openai/v1/chat/completions",
-                                       headers={"Authorization": f"Bearer {GROQ_API_KEY}"}, json=body, timeout=60)
+                                       headers={"Authorization": f"Bearer {GROQ_API_KEY}"}, json=body, timeout=45)
                         if r.status_code != 429:
                             break
-                        time.sleep(min(30, float(r.headers.get("retry-after", 10))))
-                    if r.status_code in (403, 404):
+                        time.sleep(min(8, float(r.headers.get("retry-after", 5))))
+                    # retired model, no access, still rate limited or Groq trouble: try the next model
+                    if r.status_code in (403, 404, 429) or r.status_code >= 500:
                         errors.append(f"groq {model}: HTTP {r.status_code}")
                         continue
                     r.raise_for_status()
@@ -352,9 +354,20 @@ def _llm(question, docs):
     return None, "; ".join(errors)
 
 
+_answers: dict = {}            # normalised question -> (time, answer)
+ANSWER_TTL = 3600
+
+
+def _key(q: str) -> str:
+    return re.sub(r"\s+", " ", re.sub(r"[?.!]+$", "", q.lower())).strip()
+
+
 def ask(question: str, log: bool = True) -> dict:
     q = question.strip()[:500]
-    if MEDICAL.search(q):
+    hit = _answers.get(_key(q))
+    if hit and time.time() - hit[0] < ANSWER_TTL:
+        res = hit[1]
+    elif MEDICAL.search(q):
         res = {"answer": "Medi-Flaw only shows published test results. Please ask a doctor or pharmacist "
                          "about doses or treatment.", "sources": [], "engine": "rule", "refused": True}
     else:
@@ -388,6 +401,10 @@ def ask(question: str, log: bool = True) -> dict:
             res = {"answer": text, "engine": eng, "refused": refused,
                    "sources": [{"id": d["id"], "kind": d["kind"], "ref": d["ref"], "text": d["text"]}
                                for d in docs if d["id"] in cited]}
+            if not eng.startswith("search only"):      # never keep a fallback answer
+                if len(_answers) > 300:
+                    _answers.clear()
+                _answers[_key(q)] = (time.time(), res)
     if log:
         with SessionLocal() as s:
             s.add(AskLog(question=q, answer=res["answer"], sources=[x["id"] for x in res["sources"]],
