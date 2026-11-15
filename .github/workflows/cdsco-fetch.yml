@@ -1,0 +1,41 @@
+name: CDSCO daily fetch
+
+# CDSCO drops connections from the backend host, so the fetch runs here instead.
+# New rows go straight into the database; then the server is asked to process them.
+on:
+  schedule:
+    - cron: "45 22 * * *"      # 04:15 IST every day, before the server's 05:00 run
+  workflow_dispatch:           # "Run workflow" button for testing
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install the few libraries the fetch needs
+        run: pip install "pandas>=2.1" "requests>=2.31" "sqlalchemy>=2.0.30" "psycopg[binary]>=3.1" "python-dotenv>=1.0"
+
+      - name: Fetch new CDSCO lists into the database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # The app's settings check requires these; the fetch itself never uses them.
+          SECRET_KEY: fetch-only-placeholder-not-used-by-this-job
+          PIPELINE_KEY: fetch-only-placeholder-not-used-by-this-job
+          ADMIN_EMAIL: unused@example.com
+          ADMIN_PASSWORD: fetch-only-placeholder
+        run: python -m pipeline.fetch_job
+
+      - name: Ask the server to clean, score and send alerts
+        env:
+          API: https://medi-flaw.onrender.com
+          KEY: ${{ secrets.PIPELINE_KEY }}
+        run: |
+          # the free server may be asleep: wake it first (up to 2 minutes)
+          for i in 1 2 3 4 5 6; do curl -sf "$API/api/stats" -o /dev/null && break; sleep 20; done
+          curl -sS -f -X POST "$API/api/pipeline/run-now" -H "x-pipeline-key: $KEY"
