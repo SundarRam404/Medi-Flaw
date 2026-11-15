@@ -56,7 +56,7 @@ export default function Company({ params }: { params: { id: string } }) {
             {c.by_category.map((x: any) => (
               <div key={x.category} className="flex items-center gap-2 text-sm">
                 <span className="w-36 shrink-0 text-muted">{x.category}</span>
-                <span className="h-2.5 rounded-sm bg-brand" style={{ width: `${(x.count / maxCat) * 60}%` }} />
+                <span className="h-2.5 rounded-full bg-brand/80" style={{ width: `${(x.count / maxCat) * 60}%` }} />
                 <span className="tabular-nums">{x.count}</span>
               </div>
             ))}

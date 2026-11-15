@@ -27,6 +27,8 @@ if DATABASE_URL.startswith("postgresql://"):
 SECRET_KEY = _require("SECRET_KEY", 32)
 PIPELINE_KEY = _require("PIPELINE_KEY", 32)
 APP_URL = os.getenv("APP_URL", "http://localhost:3000")
+# Optional: "Sign in with Google". Leave empty to hide the Google button.
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
 
 ADMIN_EMAIL = _require("ADMIN_EMAIL").lower()
 ADMIN_PASSWORD = _require("ADMIN_PASSWORD", 12)

@@ -46,7 +46,7 @@ export default function DataPage() {
           <div className="overflow-x-auto">
             <table className="w-full max-w-3xl text-sm">
               <thead>
-                <tr className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
+                <tr className="border-b border-line text-left text-xs text-muted">
                   <th className="py-2 pr-4 font-medium"></th>
                   <th className="py-2 pr-4 font-medium">As published</th>
                   <th className="py-2 pr-4 font-medium">After cleaning</th>
@@ -73,7 +73,7 @@ export default function DataPage() {
         </Box>
       )}
 
-      <div className="mt-8 flex gap-1 border-b-2 border-ink">
+      <div className="tabs mt-8">
         <button className={`tab ${tab === "raw" ? "tab-on" : ""}`} onClick={() => show("raw")}>As published</button>
         <button className={`tab ${tab === "clean" ? "tab-on" : ""}`} onClick={() => show("clean")}>Cleaned</button>
         <button className={`tab ${tab === "changes" ? "tab-on" : ""}`} onClick={() => { setRawId(null); show("changes"); }}>Changes</button>

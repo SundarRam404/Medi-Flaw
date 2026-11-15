@@ -66,6 +66,39 @@ class Login(BaseModel):
 class Register(Login):
     name: str
     organisation: str | None = None
+    account_type: str = "business"
+
+
+class GoogleIn(BaseModel):
+    credential: str
+    account_type: str = "business"
+    organisation: str | None = None
+
+
+def _acct(t: str | None) -> str:
+    return "personal" if (t or "").lower() == "personal" else "business"
+
+
+_google_keys = None
+
+
+def verify_google(credential: str) -> dict:
+    """Check a Google sign-in token: signed by Google, made for our app, not expired, email verified."""
+    global _google_keys
+    from pipeline.config import GOOGLE_CLIENT_ID
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(503, "Google sign-in is not set up")
+    if _google_keys is None:
+        _google_keys = jwt.PyJWKClient("https://www.googleapis.com/oauth2/v3/certs", cache_keys=True)
+    try:
+        key = _google_keys.get_signing_key_from_jwt(credential).key
+        data = jwt.decode(credential, key, algorithms=["RS256"], audience=GOOGLE_CLIENT_ID,
+                          issuer=["accounts.google.com", "https://accounts.google.com"])
+    except Exception:
+        raise HTTPException(401, "Google sign-in failed. Please try again.")
+    if not data.get("email") or not data.get("email_verified"):
+        raise HTTPException(401, "Your Google email is not verified")
+    return data
 
 
 def make_token(u: User) -> str:
@@ -92,7 +125,8 @@ def admin_user(u: User = Depends(current_user)) -> User:
 
 
 def user_json(u: User):
-    return {"id": u.id, "email": u.email, "name": u.name, "organisation": u.organisation, "role": u.role}
+    return {"id": u.id, "email": u.email, "name": u.name, "organisation": u.organisation, "role": u.role,
+            "account_type": u.account_type or "business"}
 
 
 @app.post("/api/auth/register")
@@ -100,7 +134,12 @@ def register(body: Register):
     with SessionLocal() as s:
         if s.scalar(select(User).where(User.email == body.email.lower())):
             raise HTTPException(400, "This email is already registered")
-        u = User(email=body.email.lower(), name=body.name.strip(), organisation=body.organisation,
+        if len(body.password) < 8:
+            raise HTTPException(400, "Use a password with at least 8 characters")
+        acct = _acct(body.account_type)
+        u = User(email=body.email.lower(), name=body.name.strip(),
+                 organisation=(body.organisation or None) if acct == "business" else None,
+                 account_type=acct, auth_provider="password",
                  role="pharmacist", password_hash=pipeline.hash_pw(body.password))
         s.add(u)
         s.commit()
@@ -114,6 +153,30 @@ def login(body: Login):
     if not u or not bcrypt.checkpw(body.password.encode(), u.password_hash.encode()):
         raise HTTPException(401, "Wrong email or password")
     return {"token": make_token(u), "user": user_json(u)}
+
+
+@app.post("/api/auth/google")
+def google_login(body: GoogleIn):
+    g = verify_google(body.credential)
+    email = g["email"].lower()
+    with SessionLocal() as s:
+        u = s.scalar(select(User).where(User.email == email))
+        if not u:
+            import secrets
+            acct = _acct(body.account_type)
+            u = User(email=email, name=(g.get("name") or email.split("@")[0])[:200],
+                     organisation=(body.organisation or None) if acct == "business" else None,
+                     account_type=acct, auth_provider="google", role="pharmacist",
+                     password_hash=pipeline.hash_pw(secrets.token_urlsafe(32)))
+            s.add(u)
+            s.commit()
+    return {"token": make_token(u), "user": user_json(u)}
+
+
+@app.get("/api/auth/config")
+def auth_config():
+    from pipeline.config import GOOGLE_CLIENT_ID
+    return {"google_client_id": GOOGLE_CLIENT_ID or None}
 
 
 @app.get("/api/auth/me")
@@ -610,7 +673,8 @@ class SettingsIn(BaseModel):
 def my_settings(u: User = Depends(current_user)):
     from pipeline.config import SMTP_USER, SMTP_PASSWORD
     return {"email_alerts": u.email_alerts is not False, "email_ready": bool(SMTP_USER and SMTP_PASSWORD),
-            "email": u.email, "name": u.name, "organisation": u.organisation}
+            "email": u.email, "name": u.name, "organisation": u.organisation,
+            "account_type": u.account_type or "business"}
 
 
 @app.patch("/api/me/settings")

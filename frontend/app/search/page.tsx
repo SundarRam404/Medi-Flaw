@@ -31,7 +31,7 @@ function Results() {
         <div className="mt-6 space-y-6">
           {d.companies.length > 0 && (
             <div>
-              <h2 className="mb-3 border-b-4 border-ink pb-2 text-xl font-extrabold uppercase tracking-tight">Companies</h2>
+              <h2 className="h-display mb-3 text-3xl">Companies</h2>
               <div className="card">
                 <Table head={["Company", "State", "Failed batches", "Risk"]}>
                   {d.companies.map((c: any) => (
@@ -47,7 +47,7 @@ function Results() {
             </div>
           )}
           <div>
-            <h2 className="mb-3 border-b-4 border-ink pb-2 text-xl font-extrabold uppercase tracking-tight">Failed batches {d.records.length === 50 ? "(first 50)" : `(${d.records.length})`}</h2>
+            <h2 className="h-display mb-3 text-3xl">Failed batches {d.records.length === 50 ? "(first 50)" : `(${d.records.length})`}</h2>
             {d.records.length === 0 ? (
               <p className="text-muted">No failed batches match "{q}".</p>
             ) : (

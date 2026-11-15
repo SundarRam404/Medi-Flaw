@@ -93,8 +93,8 @@ export default function Ask() {
       {err && <div className="mt-4"><ErrorNote msg={err} /></div>}
 
       {res && (
-        <div className="mt-6 card">
-          <div className="border-b-2 border-ink bg-ink px-5 py-3 text-sm font-semibold text-white">{asked}</div>
+        <div className="card mt-6 overflow-hidden">
+          <div className="border-b border-line bg-sand/60 px-5 py-3 text-sm font-medium text-ink">{asked}</div>
           <div className={`px-5 py-4 ${res.refused ? "text-muted" : ""}`}><Answer text={res.answer} /></div>
           {res.sources.length > 0 && (
             <div className="border-t border-line px-5 py-3">

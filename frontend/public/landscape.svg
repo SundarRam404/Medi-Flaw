@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6c99a"/><stop offset=".35" stop-color="#f7d7b5"/>
+      <stop offset=".6" stop-color="#f3c6c0"/><stop offset="1" stop-color="#e9b8c4"/>
+    </linearGradient>
+    <radialGradient id="sun" cx=".62" cy=".28" r=".35">
+      <stop offset="0" stop-color="#fff4dc" stop-opacity=".95"/><stop offset="1" stop-color="#fff4dc" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="m1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b98aa6"/><stop offset="1" stop-color="#d9a7a0"/></linearGradient>
+    <linearGradient id="m2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9c6f98"/><stop offset=".6" stop-color="#c58f8f"/><stop offset="1" stop-color="#d8a88c"/></linearGradient>
+    <linearGradient id="m3" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8fa37a"/><stop offset=".5" stop-color="#c5a35f"/><stop offset="1" stop-color="#9aa774"/></linearGradient>
+    <linearGradient id="lake" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e8b9c3"/><stop offset=".5" stop-color="#d9a3bd"/><stop offset="1" stop-color="#f4e6dc"/></linearGradient>
+    <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset=".55" stop-color="#fbf7f2" stop-opacity="0"/><stop offset="1" stop-color="#fbf7f2"/></linearGradient>
+    <filter id="paint" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency=".012 .03" numOctaves="3" seed="7"/>
+      <feDisplacementMap in="SourceGraphic" scale="22"/>
+    </filter>
+    <filter id="soft"><feGaussianBlur stdDeviation="6"/></filter>
+    <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="2" seed="3"/><feColorMatrix values="0 0 0 0 .35  0 0 0 0 .25  0 0 0 0 .2  0 0 0 .09 0"/></filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <rect width="1600" height="900" fill="url(#sun)"/>
+  <g filter="url(#paint)" opacity=".75">
+    <ellipse cx="300" cy="170" rx="260" ry="38" fill="#fff1e2"/><ellipse cx="1250" cy="120" rx="300" ry="34" fill="#fde9d6"/>
+    <ellipse cx="820" cy="230" rx="220" ry="26" fill="#f9e3d3"/><ellipse cx="1450" cy="260" rx="200" ry="24" fill="#f6dccf"/>
+  </g>
+  <g filter="url(#paint)">
+    <path d="M0 470 L180 400 L330 430 L520 330 L700 420 L860 380 L1020 440 L1180 360 L1350 420 L1600 380 L1600 600 L0 600Z" fill="url(#m1)" opacity=".8"/>
+    <path d="M-20 560 L260 470 L470 330 L640 250 L760 300 L930 410 L1100 470 L1300 430 L1480 480 L1620 460 L1620 640 L-20 640Z" fill="url(#m2)"/>
+    <path d="M560 300 L640 250 L700 280 L650 330 Z" fill="#e2b7a6" opacity=".7"/>
+    <path d="M-20 600 C200 560 420 590 620 570 C860 545 1080 600 1300 575 C1440 560 1540 580 1620 570 L1620 680 L-20 680Z" fill="url(#m3)"/>
+  </g>
+  <g filter="url(#paint)">
+    <path d="M-20 660 C260 640 520 655 800 648 C1080 640 1340 660 1620 650 L1620 900 L-20 900Z" fill="url(#lake)"/>
+    <path d="M300 690 C600 680 900 700 1300 688" stroke="#fbeee6" stroke-width="5" fill="none" opacity=".7"/>
+    <path d="M150 730 C500 718 900 740 1450 725" stroke="#fbeee6" stroke-width="4" fill="none" opacity=".5"/>
+    <path d="M-20 640 C120 625 200 660 340 655 C420 652 460 680 380 700 C250 720 80 700 -20 715Z" fill="#a9b26e"/>
+    <path d="M1620 630 C1480 620 1380 655 1260 650 C1180 648 1150 676 1230 690 C1360 706 1520 690 1620 700Z" fill="#c2a95c"/>
+  </g>
+  <g filter="url(#soft)" opacity=".55">
+    <circle cx="210" cy="690" r="5" fill="#f2a7c1"/><circle cx="260" cy="700" r="4" fill="#f7d36b"/><circle cx="1320" cy="672" r="5" fill="#f2a7c1"/>
+  </g>
+  <rect width="1600" height="900" filter="url(#grain)"/>
+  <rect width="1600" height="900" fill="url(#fade)"/>
+</svg>

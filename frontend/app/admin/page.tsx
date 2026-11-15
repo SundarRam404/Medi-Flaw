@@ -75,7 +75,7 @@ export default function Admin() {
         {err && <div className="mt-3"><ErrorNote msg={err} /></div>}
       </Box>
 
-      <div className="mt-8 flex gap-1 border-b-2 border-ink">
+      <div className="tabs mt-8">
         <button className={`tab ${tab === "runs" ? "tab-on" : ""}`} onClick={() => setTab("runs")}>Run history</button>
         <button className={`tab ${tab === "outbox" ? "tab-on" : ""}`} onClick={() => setTab("outbox")}>Alert emails {alerts ? `(${alerts.length})` : ""}</button>
         <button className={`tab ${tab === "model" ? "tab-on" : ""}`} onClick={() => setTab("model")}>Model results</button>
@@ -153,7 +153,7 @@ export default function Admin() {
                 {m.importance.slice(0, 8).map((x: any) => (
                   <div key={x.feature} className="flex items-center gap-2 text-xs">
                     <span className="w-52 shrink-0 text-muted">{x.feature}</span>
-                    <span className="h-2 rounded-sm bg-brand" style={{ width: `${x.value * 250}px` }} />
+                    <span className="h-2 rounded-full bg-brand/80" style={{ width: `${x.value * 250}px` }} />
                   </div>
                 ))}
               </>

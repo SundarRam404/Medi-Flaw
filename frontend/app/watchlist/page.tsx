@@ -168,8 +168,8 @@ export default function MyMedicines() {
             <div className="flex items-center gap-3">
               <span>Email alerts</span>
               <button onClick={toggleEmail} role="switch" aria-checked={settings.email_alerts}
-                className={`relative h-6 w-11 border-2 border-ink transition ${settings.email_alerts ? "bg-brand" : "bg-white"}`}>
-                <span className={`absolute top-[1px] h-[18px] w-[18px] bg-ink transition ${settings.email_alerts ? "left-[21px] bg-white" : "left-[1px]"}`} />
+                className={`relative h-6 w-11 rounded-full transition ${settings.email_alerts ? "bg-ink" : "bg-line"}`}>
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${settings.email_alerts ? "left-[22px]" : "left-0.5"}`} />
               </button>
               <span className="text-muted">{settings.email_alerts ? "On" : "Off"}</span>
             </div>
@@ -190,7 +190,7 @@ export default function MyMedicines() {
       </div>
 
       <Box className="mt-4" title="Add medicines">
-        <div className="mb-4 flex flex-wrap gap-1 border-b-2 border-ink">
+        <div className="tabs mb-4">
           {([["one", "One batch"], ["csv", "CSV file"], ["pdf", "Invoice PDF"], ["photo", "Invoice photo"]] as [Tab, string][]).map(([k, l]) => (
             <button key={k} className={`tab ${tab === k ? "tab-on" : ""}`} onClick={() => { setTab(k); setPreview(null); setErr(""); setMsg(""); }}>{l}</button>
           ))}
@@ -231,7 +231,7 @@ export default function MyMedicines() {
         {msg && <p className="mt-3 text-sm text-ok">{msg}</p>}
 
         {preview && preview.items.length > 0 && (
-          <div className="mt-4 border-2 border-ink">
+          <div className="mt-4 overflow-hidden rounded-2xl border border-line">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-paper px-3 py-2 text-sm">
               <span>Found {preview.items.length} medicines (read by {preview.read_by}). Untick any that are wrong.</span>
               <button className="btn" onClick={addPicked}>Add {Object.values(picked).filter(Boolean).length} medicines</button>
@@ -337,11 +337,11 @@ export default function MyMedicines() {
 }
 
 function Card({ label, value, tone }: { label: string; value: number; tone?: "bad" | "warn" }) {
-  const c = tone === "bad" ? "text-brand" : tone === "warn" ? "text-warn" : "text-ink";
+  const c = tone === "bad" ? "text-bad" : tone === "warn" ? "text-warn" : "text-ink";
   return (
     <div className="card px-4 py-3">
       <div className="label">{label}</div>
-      <div className={`mt-1 text-3xl font-extrabold tracking-[-0.02em] tabular-nums ${c}`}>{value}</div>
+      <div className={`mt-1 text-3xl tracking-[-0.02em] tabular-nums ${c}`}>{value}</div>
     </div>
   );
 }
