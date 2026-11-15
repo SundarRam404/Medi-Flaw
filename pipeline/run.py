@@ -40,6 +40,16 @@ def _save(run_id, name, data):
         s.commit()
 
 
+def _nothing_new(prev: dict) -> bool:
+    """True when this run's clean step found no new records. The pipeline runs daily,
+    so retraining and re-indexing are skipped on quiet days. On the 1st of every month
+    they always run, so risk scores that depend on time since last failure stay fresh."""
+    if date.today().day == 1:
+        return False
+    ids = (prev.get("clean") or {}).get("result", {}).get("new_record_ids")
+    return ids is not None and len(ids) == 0
+
+
 def run_step(run_id: int, name: str) -> dict:
     if name not in STEPS:
         raise ValueError(f"unknown step {name}")
@@ -51,6 +61,8 @@ def run_step(run_id: int, name: str) -> dict:
             res = fetch.run(run_id)
         elif name == "clean":
             res = clean.run(run_id)
+        elif name in ("score", "index") and _nothing_new(prev):
+            res = {"skipped": "no new records today; full refresh runs on the 1st of each month"}
         elif name == "score":
             res = model.run(run_id)
         elif name == "index":
