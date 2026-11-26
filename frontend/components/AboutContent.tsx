@@ -37,7 +37,7 @@ export default function AboutContent({ compact = false }: { compact?: boolean })
       <h3 className={h}>How it works</h3>
       <ol className={`mt-2 list-decimal space-y-1 pl-5 ${li}`}>
         <li>Save the medicines you have in Medi-Flaw.</li>
-        <li>Every day, our automatic system checks for a new government list. When one comes, it downloads it, cleans it and saves it.</li>
+        <li>Every day, Medi-Flaw&apos;s automatic system checks for a new government list. When one comes, it downloads it, cleans it and saves it.</li>
         <li>If any medicine you saved is on the failed list, you get an <b>email straight away</b>, with a <b>ready return letter</b> to send back the stock to your distributor.</li>
       </ol>
       <p className={p}>No more worrying that you sold or gave out a medicine from a failed batch.</p>
@@ -74,7 +74,7 @@ export default function AboutContent({ compact = false }: { compact?: boolean })
         </li>
       </ul>
 
-      <h3 className={h}>Why we built Medi-Flaw</h3>
+      <h3 className={h}>Why I built Medi-Flaw</h3>
       <p className={p}>
         In 2025, in Madhya Pradesh, small children with a simple cough were given a syrup called Coldrif. Lab tests later
         found it had <b>48.6% diethylene glycol</b>, a poison used in paint and brake fluid. The safe limit is 0.1%.
@@ -87,7 +87,7 @@ export default function AboutContent({ compact = false }: { compact?: boolean })
       </p>
       <p className={p}>
         A medicine should heal, not harm. When a batch is found to be bad, every day counts. The faster shops and families
-        know, the fewer people take it. That is why Medi-Flaw exists.
+        know, the fewer people take it. That is why I built Medi-Flaw.
       </p>
 
       <p className={`${compact ? "mt-4 text-[14px]" : "mt-8 text-2xl"} font-semibold leading-snug text-ink`}>
