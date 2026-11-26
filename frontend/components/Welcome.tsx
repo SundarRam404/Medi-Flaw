@@ -284,7 +284,10 @@ export default function Welcome() {
           </>
         ) : (<>
         <h1 className="h-display mt-5 text-[34px]">{mode === "login" ? "Welcome" : "Create account"}</h1>
-        <p className="mt-1 text-sm text-muted">Check any medicine batch against government lab results.</p>
+        <p className="mt-1 text-sm text-muted">
+          Check any medicine batch against government lab results.{" "}
+          <Link href="/about" className="whitespace-nowrap font-medium text-brand">What is Medi-Flaw? &rarr;</Link>
+        </p>
 
         <div className="mt-5 grid grid-cols-2 gap-1 rounded-full bg-sand p-1 text-sm">
           {KINDS.map((x) => (

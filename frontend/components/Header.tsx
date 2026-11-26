@@ -81,9 +81,14 @@ export default function Header() {
   return (
     <header className={home ? "absolute inset-x-0 top-0 z-30" : "sticky top-0 z-30 border-b border-line bg-paper/85 backdrop-blur-md"}>
       <nav className="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4">
-        <Link href="/" className="mr-auto flex shrink-0 items-center hover:no-underline" aria-label="Medi-Flaw home">
+        <Link href="/" className="flex shrink-0 items-center hover:no-underline" aria-label="Medi-Flaw home">
           <Logo size={24} />
         </Link>
+        <Link href="/about" className={`mr-auto ml-2 hidden shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition hover:no-underline sm:inline-flex ${
+          path.startsWith("/about") ? "border-ink bg-white/80 text-ink" : "border-line/80 bg-white/50 text-muted hover:border-[#d9c7ba] hover:text-ink"}`}>
+          <span className="h-1.5 w-1.5 rounded-full bg-brand" /> What is Medi-Flaw?
+        </Link>
+        <span className="mr-auto sm:hidden" />
         <Link href="/" className={`hidden shrink-0 rounded-full px-3.5 py-1.5 text-sm text-ink transition hover:no-underline sm:inline-block ${
           searchOn ? "bg-white/80 font-medium shadow-sm" : "opacity-75 hover:bg-white/50 hover:opacity-100"}`}>Search</Link>
         <Link href="/companies" className={`hidden shrink-0 rounded-full px-3.5 py-1.5 text-sm text-ink transition hover:no-underline sm:inline-block ${
