@@ -83,7 +83,7 @@ export default function AboutContent({ compact = false }: { compact?: boolean })
       </p>
       <p className={p}>
         It was not the first time. In 2022, <b>70 children in The Gambia</b> died after taking cough syrups made in India.
-        Children in <b>Uzbekistan</b> also died from an Indian-made syrup, and that company&apos;s licence was cancelled.
+        Children in <b>Uzbekistan</b> also died from an Indian-made syrup, and that company&apos;s licence was cancelled. <b>But cancelling a licence cannot bring back the lives that were lost.</b>
       </p>
       <p className={p}>
         A medicine should heal, not harm. When a batch is found to be bad, every day counts. The faster shops and families
