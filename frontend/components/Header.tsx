@@ -84,16 +84,15 @@ export default function Header() {
         <Link href="/" className="flex shrink-0 items-center hover:no-underline" aria-label="Medi-Flaw home">
           <Logo size={24} />
         </Link>
-        <Link href="/about" className={`mr-auto ml-2 hidden shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition hover:no-underline sm:inline-flex ${
+        <Link href="/about" className={`mr-auto ml-2 inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-1 text-[11px] transition hover:no-underline sm:px-3 sm:text-xs ${
           path.startsWith("/about") ? "border-ink bg-white/80 text-ink" : "border-line/80 bg-white/50 text-muted hover:border-[#d9c7ba] hover:text-ink"}`}>
-          <span className="h-1.5 w-1.5 rounded-full bg-brand" /> What is Medi-Flaw?
+          <span className="h-1.5 w-1.5 rounded-full bg-brand" /><span className="sm:hidden">What is it?</span><span className="hidden sm:inline">What is Medi-Flaw?</span>
         </Link>
-        <span className="mr-auto sm:hidden" />
         <Link href="/" className={`hidden shrink-0 rounded-full px-3.5 py-1.5 text-sm text-ink transition hover:no-underline sm:inline-block ${
           searchOn ? "bg-white/80 font-medium shadow-sm" : "opacity-75 hover:bg-white/50 hover:opacity-100"}`}>Search</Link>
         <Link href="/companies" className={`hidden shrink-0 rounded-full px-3.5 py-1.5 text-sm text-ink transition hover:no-underline sm:inline-block ${
           path.startsWith("/companies") ? "bg-white/80 font-medium shadow-sm" : "opacity-75 hover:bg-white/50 hover:opacity-100"}`}>Companies</Link>
-        <Link href="/watchlist" className="btn shrink-0 px-4 py-2 hover:no-underline">{mine}</Link>
+        <Link href="/watchlist" className="btn shrink-0 px-3 py-1.5 text-xs hover:no-underline sm:px-4 sm:py-2 sm:text-sm"><span className="sm:hidden">{user?.account_type === "personal" ? "My medicines" : mine}</span><span className="hidden sm:inline">{mine}</span></Link>
 
         {!user ? (
           <Link href="/welcome" className="shrink-0 rounded-full px-3.5 py-1.5 text-sm text-ink opacity-80 hover:bg-white/50 hover:no-underline hover:opacity-100">Log in</Link>
