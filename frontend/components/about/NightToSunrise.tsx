@@ -339,12 +339,12 @@ export default function NightToSunrise() {
           <Reveal><h2 className="h-display text-center text-4xl md:text-5xl">What the danger levels mean</h2></Reveal>
           <div className="mt-8 grid gap-4 md:grid-cols-3">
             {[
-              ["HIGH", "bg-[#b42318]", "The most serious", "Fake medicine, a product that should be germ-free but is not (sterility), particles inside, or germs found. Also a wrong amount of medicine in an injection or eye drop. Stop using it and talk to your doctor today."],
-              ["MEDIUM", "bg-[#b46a00]", "May not work as it should", "Wrong amount of medicine (too little or too much), the tablet does not dissolve properly, too many impurities, or a physical test failed (like pH or volume)."],
               ["LOW", "bg-[#7a6a62]", "Usually a label problem", "The label is wrong or the medicine looks different (colour, shape, smell). The medicine itself may be fine."],
+              ["MEDIUM", "bg-[#b46a00]", "May not work as it should", "Wrong amount of medicine (too little or too much), the tablet does not dissolve properly, too many impurities, or a physical test failed (like pH or volume)."],
+              ["HIGH", "bg-[#b42318]", "The most serious", "Fake medicine, a product that should be germ-free but is not (sterility), particles inside, or germs found. Also a wrong amount of medicine in an injection or eye drop. Stop using it and talk to your doctor today."]
             ].map(([lvl, bg, t, d], i) => (
               <Reveal key={lvl} delay={i * 180}>
-                <div className="h-full rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_20px_60px_-30px_rgba(120,60,40,0.5)] backdrop-blur-md">
+                <div className="h-full rounded-3xl border border-white/60 bg-white/80 p-6 text-[#2b2320] shadow-[0_20px_60px_-30px_rgba(120,60,40,0.5)] backdrop-blur-md">
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold tracking-wider text-white ${bg}`}>{lvl}</span>
                   <h3 className="mt-4 text-xl font-medium">{t}</h3>
                   <p className="mt-2 leading-relaxed text-[#4a3d38]">{d}</p>
