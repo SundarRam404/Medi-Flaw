@@ -9,8 +9,8 @@ import Link from "next/link";
 import { getUser } from "@/lib/api";
 
 // Pages that open without the welcome screen (links from alert emails, printouts, the welcome page itself)
-const OPEN = ["/welcome", "/login", "/ack", "/letter", "/records", "/privacy", "/terms"];
-const FULL = ["/welcome", "/login", "/privacy", "/terms"]; // full-screen pages: no header or footer
+const OPEN = ["/welcome", "/login", "/ack", "/letter", "/records", "/privacy", "/terms", "/about"];
+const FULL = ["/welcome", "/login", "/privacy", "/terms", "/about"]; // full-screen pages: no header or footer
 
 export function isGuest() { try { return localStorage.getItem("mf_guest") === "1"; } catch { return false; } }
 export function setGuest(on: boolean) { try { on ? localStorage.setItem("mf_guest", "1") : localStorage.removeItem("mf_guest"); } catch {} }
