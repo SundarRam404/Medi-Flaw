@@ -44,7 +44,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <Logo size={20} />
             <p className="mt-2 text-muted">Making Medicine Quality Transparent</p>
           </div>
-          <FooterCol title="Explore" links={[["/", "Search a batch"], ["/companies", "Companies"], ["/reports", "Reports"], ["/data", "Data"], ["/ask", "Ask questions"]]} />
+          <FooterCol title="Explore" links={[["/about", "What is Medi-Flaw?"], ["/", "Search a batch"], ["/companies", "Companies"], ["/reports", "Reports"], ["/data", "Data"], ["/ask", "Ask questions"]]} />
           <FooterCol title="Account" links={[["/watchlist", "My medicines"], ["/welcome", "Log in or sign up"]]} />
           <FooterCol title="Help and legal" links={[["mailto:mediflaw@gmail.com", "mediflaw@gmail.com"], ["/privacy", "Privacy policy"], ["/terms", "Terms of use"]]} />
         </div>
