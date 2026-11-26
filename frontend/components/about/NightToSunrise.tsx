@@ -19,11 +19,11 @@ const smooth = (a: number, b: number, x: number) => { const t = clamp((x - a) / 
 // sky at different points of the scroll: [progress, top colour, bottom colour]
 const SKY: [number, string, string][] = [
   [0.0, "#03161c", "#073640"],   // night, deep teal
-  [0.3, "#021116", "#05262e"],
-  [0.5, "#010608", "#031419"],   // darkest: the story
-  [0.62, "#0b1430", "#3a2450"],  // first light
-  [0.74, "#2a3a6e", "#d9765c"],  // dawn
-  [0.86, "#f3b98a", "#f3c6c0"],  // sunrise
+  [0.55, "#021116", "#05262e"],
+  [0.78, "#010608", "#031419"],  // darkest: the story
+  [0.86, "#0b1430", "#3a2450"],  // first light
+  [0.92, "#2a3a6e", "#d9765c"],  // dawn
+  [0.97, "#f3b98a", "#f3c6c0"],  // sunrise
   [1.0, "#fbf7f2", "#fbf2e8"],   // day
 ];
 
@@ -107,9 +107,9 @@ function Sky({ progress }: { progress: React.MutableRefObject<number> }) {
     window.addEventListener("resize", resize);
     const draw = (t: number) => {
       const p = progress.current;
-      const night = 1 - smooth(0.6, 0.82, p);        // stars and blue glow fade at dawn
-      const glow = 1 - smooth(0.86, 0.98, p);        // seeds stay a bit longer, turning gold
-      const warm = smooth(0.58, 0.8, p);
+      const night = 1 - smooth(0.84, 0.95, p);        // stars and blue glow fade at dawn
+      const glow = 1 - smooth(0.94, 0.995, p);        // seeds stay a bit longer, turning gold
+      const warm = smooth(0.82, 0.95, p);
       ctx.clearRect(0, 0, w, h);
       if (night > 0.01) {
         for (const s of stars) {
@@ -161,12 +161,12 @@ export default function NightToSunrise() {
       const [top, bottom] = skyAt(p);
       if (sky.current) sky.current.style.background = `linear-gradient(180deg, ${css(top)} 0%, ${css(bottom)} 100%)`;
       if (sun.current) {
-        const rise = smooth(0.6, 0.92, p);
+        const rise = smooth(0.82, 0.99, p);
         sun.current.style.transform = `translate(-50%, ${(1 - rise) * 70}vh)`;
-        sun.current.style.opacity = String(smooth(0.58, 0.7, p) * (1 - smooth(0.95, 1, p) * 0.4));
+        sun.current.style.opacity = String(smooth(0.82, 0.9, p) * (1 - smooth(0.98, 1, p) * 0.4));
       }
-      if (aurora.current) aurora.current.style.opacity = String(0.55 * (1 - smooth(0.42, 0.6, p)));
-      setDay(p > 0.82);
+      if (aurora.current) aurora.current.style.opacity = String(0.55 * (1 - smooth(0.6, 0.75, p)));
+      setDay(p > 0.95);
     };
     const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } };
     update();
@@ -308,6 +308,52 @@ export default function NightToSunrise() {
           </div>
         </section>
 
+        {/* 6. how it works, in the dawn */}
+        <section className="mx-auto flex max-w-6xl flex-col justify-center px-6 py-16 text-white md:py-20">
+          <Reveal><h2 className="h-display text-center text-4xl md:text-5xl">How Medi-Flaw works</h2></Reveal>
+          <div className="mt-6 grid gap-5 md:grid-cols-3">
+            {[
+              ["1", "Save your medicines", "Scan the QR code on the strip, upload your purchase invoice (PDF), take a photo of it, or just type the batch number."],
+              ["2", "It watches every day", "Every day, Medi-Flaw's automatic system checks for a new government list. When one comes, it downloads it, cleans it and saves it."],
+              ["3", "You get an email at once", "If any medicine you saved is on the failed list, you get an email straight away, with a ready return letter for your distributor."],
+            ].map(([n, t, d], i) => (
+              <Reveal key={n} delay={i * 180}>
+                <div className="h-full rounded-3xl border border-white/30 bg-white/15 p-6 backdrop-blur-md">
+                  <div className="grid h-9 w-9 place-items-center rounded-full bg-white/90 text-sm font-medium text-[#2b2320]">{n}</div>
+                  <h3 className="mt-4 text-xl font-medium">{t}</h3>
+                  <p className="mt-2 leading-relaxed text-white/90">{d}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+          <Reveal delay={200}>
+            <p className="mx-auto mt-10 max-w-2xl text-center text-lg text-white/95">
+              <b>Is it only for shops? No.</b> Anyone can use it, even without logging in. Turn the strip or bottle around, find the
+              batch number (usually B.No.), type it in, and see if that batch failed.
+            </p>
+          </Reveal>
+        </section>
+
+        {/* danger levels */}
+        <section className="mx-auto flex max-w-6xl flex-col justify-center px-6 py-12 text-white md:py-16">
+          <Reveal><h2 className="h-display text-center text-4xl md:text-5xl">What the danger levels mean</h2></Reveal>
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            {[
+              ["HIGH", "bg-[#b42318]", "The most serious", "Fake medicine, a product that should be germ-free but is not (sterility), particles inside, or germs found. Also a wrong amount of medicine in an injection or eye drop. Stop using it and talk to your doctor today."],
+              ["MEDIUM", "bg-[#b46a00]", "May not work as it should", "Wrong amount of medicine (too little or too much), the tablet does not dissolve properly, too many impurities, or a physical test failed (like pH or volume)."],
+              ["LOW", "bg-[#7a6a62]", "Usually a label problem", "The label is wrong or the medicine looks different (colour, shape, smell). The medicine itself may be fine."],
+            ].map(([lvl, bg, t, d], i) => (
+              <Reveal key={lvl} delay={i * 180}>
+                <div className="h-full rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_20px_60px_-30px_rgba(120,60,40,0.5)] backdrop-blur-md">
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold tracking-wider text-white ${bg}`}>{lvl}</span>
+                  <h3 className="mt-4 text-xl font-medium">{t}</h3>
+                  <p className="mt-2 leading-relaxed text-[#4a3d38]">{d}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+
         {/* 4. the story: darkest part, one light for each child */}
         <section className="mx-auto flex max-w-5xl flex-col justify-center px-6 py-16 text-center md:py-20">
           <Reveal><p className="text-sm uppercase tracking-[0.3em] text-[#ffd9a8]/80">Why I built Medi-Flaw</p></Reveal>
@@ -340,67 +386,21 @@ export default function NightToSunrise() {
           </Reveal>
         </section>
 
-        {/* 6. how it works, in the dawn */}
-        <section className="mx-auto flex max-w-6xl flex-col justify-center px-6 py-16 text-white md:py-20">
-          <Reveal><h2 className="h-display mx-auto max-w-4xl text-center text-4xl md:text-6xl">A medicine should heal, not harm.</h2></Reveal>
-          <Reveal delay={200}>
-            <p className="mx-auto mt-6 max-w-2xl text-center text-lg leading-relaxed text-white/90">
-              When a batch is found to be bad, every day counts. The faster shops and families know, the fewer people take it.
-              <b> That is why I built Medi-Flaw.</b>
-            </p>
-          </Reveal>
-          <Reveal delay={300}><h3 className="mt-10 text-center text-xl font-medium uppercase tracking-[0.2em] text-white/80">How it works</h3></Reveal>
-          <div className="mt-6 grid gap-5 md:grid-cols-3">
-            {[
-              ["1", "Save your medicines", "Scan the QR code on the strip, upload your purchase invoice (PDF), take a photo of it, or just type the batch number."],
-              ["2", "It watches every day", "Every day, Medi-Flaw's automatic system checks for a new government list. When one comes, it downloads it, cleans it and saves it."],
-              ["3", "You get an email at once", "If any medicine you saved is on the failed list, you get an email straight away, with a ready return letter for your distributor."],
-            ].map(([n, t, d], i) => (
-              <Reveal key={n} delay={i * 180}>
-                <div className="h-full rounded-3xl border border-white/30 bg-white/15 p-6 backdrop-blur-md">
-                  <div className="grid h-9 w-9 place-items-center rounded-full bg-white/90 text-sm font-medium text-[#2b2320]">{n}</div>
-                  <h3 className="mt-4 text-xl font-medium">{t}</h3>
-                  <p className="mt-2 leading-relaxed text-white/90">{d}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-          <Reveal delay={200}>
-            <p className="mx-auto mt-10 max-w-2xl text-center text-lg text-white/95">
-              <b>Is it only for shops? No.</b> Anyone can use it, even without logging in. Turn the strip or bottle around, find the
-              batch number (usually B.No.), type it in, and see if that batch failed.
-            </p>
-          </Reveal>
-        </section>
-
-        {/* 7. danger levels, sunrise */}
-        <section className="mx-auto flex max-w-6xl flex-col justify-center px-6 py-12 text-[#2b2320] md:py-16">
-          <Reveal><h2 className="h-display text-center text-4xl md:text-5xl">What the danger levels mean</h2></Reveal>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {[
-              ["HIGH", "bg-[#b42318]", "The most serious", "Fake medicine, a product that should be germ-free but is not (sterility), particles inside, or germs found. Also a wrong amount of medicine in an injection or eye drop. Stop using it and talk to your doctor today."],
-              ["MEDIUM", "bg-[#b46a00]", "May not work as it should", "Wrong amount of medicine (too little or too much), the tablet does not dissolve properly, too many impurities, or a physical test failed (like pH or volume)."],
-              ["LOW", "bg-[#7a6a62]", "Usually a label problem", "The label is wrong or the medicine looks different (colour, shape, smell). The medicine itself may be fine."],
-            ].map(([lvl, bg, t, d], i) => (
-              <Reveal key={lvl} delay={i * 180}>
-                <div className="h-full rounded-3xl border border-white/60 bg-white/70 p-6 shadow-[0_20px_60px_-30px_rgba(120,60,40,0.5)] backdrop-blur-md">
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold tracking-wider text-white ${bg}`}>{lvl}</span>
-                  <h3 className="mt-4 text-xl font-medium">{t}</h3>
-                  <p className="mt-2 leading-relaxed text-[#4a3d38]">{d}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </section>
-
         {/* 8. day */}
         <section className="relative flex min-h-[62svh] flex-col items-center justify-center overflow-hidden px-6 pb-24 text-center text-[#2b2320]">
           <img src="/landscape.svg" alt="" aria-hidden className="absolute inset-x-0 bottom-0 h-[75%] w-full object-cover opacity-90"
             style={{ maskImage: "linear-gradient(to bottom, transparent, black 35%)", WebkitMaskImage: "linear-gradient(to bottom, transparent, black 35%)" }} />
           <div className="relative">
-            <Reveal><Logo size={34} /></Reveal>
+            <Reveal><h2 className="h-display mx-auto max-w-4xl text-4xl md:text-6xl">A medicine should heal, not harm.</h2></Reveal>
+            <Reveal delay={150}>
+              <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-[#4a3d38]">
+                When a batch is found to be bad, every day counts. The faster shops and families know, the fewer people take it.
+                <b> That is why I built Medi-Flaw.</b>
+              </p>
+            </Reveal>
+            <Reveal delay={250}><div className="mt-10"><Logo size={34} /></div></Reveal>
             <Reveal delay={200}>
-              <p className="h-display mx-auto mt-8 max-w-4xl text-4xl font-semibold leading-tight md:text-6xl">
+              <p className="h-display mx-auto mt-6 max-w-4xl text-3xl font-semibold leading-tight md:text-5xl">
                 Check with Medi-Flaw, and give medicine to your parents and children with peace of mind.
               </p>
             </Reveal>
