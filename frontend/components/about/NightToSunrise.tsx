@@ -208,9 +208,9 @@ export default function NightToSunrise() {
 
       <main className="relative z-10">
         {/* 0. opening */}
-        <section className="relative flex min-h-[88svh] flex-col items-center justify-center px-6 text-center">
+        <section className="relative flex min-h-[72svh] flex-col items-center justify-center px-6 text-center">
           <Reveal><p className="text-xs uppercase tracking-[0.35em] text-[#8fe9dd]">Making Medicine Quality Transparent</p></Reveal>
-          <Reveal delay={200}><h1 className={`h-display mt-6 text-5xl md:text-8xl ${glowText}`}>What is Medi-Flaw?</h1></Reveal>
+          <Reveal delay={200}><h1 className={`h-display mt-6 text-5xl md:text-8xl ${glowText}`}>What is <span className="whitespace-nowrap">Medi-Flaw?</span></h1></Reveal>
           <Reveal delay={450}><p className="mx-auto mt-6 max-w-xl text-lg text-[#b9e6e0]">A story about medicines, a list nobody reads, and the children who could not wait.</p></Reveal>
           <div className="absolute bottom-10 flex flex-col items-center gap-2 text-xs text-[#8fe9dd]/80">
             <span>Scroll</span>
@@ -219,11 +219,11 @@ export default function NightToSunrise() {
         </section>
 
         {/* 1. the list */}
-        <section className="mx-auto max-w-6xl px-6 py-20 md:py-24">
+        <section className="mx-auto max-w-6xl px-6 py-12 md:py-16">
           <div className="grid items-center gap-12 md:grid-cols-2">
           <div>
             <Reveal><p className="text-sm uppercase tracking-[0.25em] text-[#8fe9dd]">Every month</p></Reveal>
-            <Reveal delay={150}><h2 className="h-display mt-3 text-4xl md:text-6xl">India tests its medicines.</h2></Reveal>
+            <Reveal delay={150}><h2 className="h-display mt-3 text-4xl md:text-5xl">India tests its medicines.</h2></Reveal>
             <Reveal delay={300}>
               <p className="mt-6 text-lg leading-relaxed text-[#cdeee9]">
                 The Government of India&apos;s drug regulator (CDSCO) and state drug labs pick medicines at random and test them.
@@ -252,7 +252,7 @@ export default function NightToSunrise() {
             </div>
           </Reveal>
           </div>
-          <div className="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
               { n: 3000, s: "+", l: "medicine companies in India" },
               { n: 10500, s: "", l: "factories making medicines", pre: "~" },
@@ -270,9 +270,9 @@ export default function NightToSunrise() {
         </section>
 
         {/* 3. small shops */}
-        <section className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 md:grid-cols-2 md:py-24">
+        <section className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-12 md:grid-cols-2 md:py-16">
           <Reveal>
-            <div className="grid grid-cols-5 gap-3">
+            <div className="mx-auto grid max-w-sm grid-cols-5 gap-2.5">
               {Array.from({ length: 10 }).map((_, i) => (
                 <div key={i} className={`grid aspect-square place-items-center rounded-2xl border text-2xl ${i < 9 ? "border-[#8fe9dd]/40 bg-[#8fe9dd]/10 shadow-[0_0_24px_rgba(120,240,230,0.2)]" : "border-white/10 bg-white/5 opacity-60"}`}>
                   <span aria-hidden>{i < 9 ? "\u{1F3EA}" : "\u{1F3EC}"}</span>
@@ -282,7 +282,7 @@ export default function NightToSunrise() {
             <p className="mt-3 text-center text-xs text-[#8fe9dd]">About 9 out of 10 medicine shops are small local stores</p>
           </Reveal>
           <div>
-            <Reveal><h2 className="h-display text-4xl md:text-6xl">Who gets left behind</h2></Reveal>
+            <Reveal><h2 className="h-display text-4xl md:text-5xl">Who gets left behind</h2></Reveal>
             <Reveal delay={150}>
               <p className="mt-6 text-lg leading-relaxed text-[#cdeee9]">
                 India has lakhs of medicine shops, and <b className="text-white">about 9 out of 10 are small local stores</b>. Their medicines come through
@@ -309,7 +309,7 @@ export default function NightToSunrise() {
         </section>
 
         {/* 4. the story: darkest part, one light for each child */}
-        <section className="mx-auto flex max-w-5xl flex-col justify-center px-6 py-24 text-center md:py-32">
+        <section className="mx-auto flex max-w-5xl flex-col justify-center px-6 py-16 text-center md:py-20">
           <Reveal><p className="text-sm uppercase tracking-[0.3em] text-[#ffd9a8]/80">Why I built Medi-Flaw</p></Reveal>
           <Reveal delay={200}>
             <p className="mx-auto mt-8 max-w-2xl text-xl leading-relaxed text-[#f1e7da] md:text-2xl">
@@ -333,20 +333,15 @@ export default function NightToSunrise() {
             </p>
           </Reveal>
 
-          <div className="mt-6 grid items-start gap-8 md:grid-cols-[1fr_2fr]">
-            <Candles count={20} label="Madhya Pradesh, 2025 · more than 20 children" />
-            <Candles count={70} label="The Gambia, 2022 · 70 children" />
-          </div>
           <Reveal delay={250}>
             <p className="mx-auto mt-10 max-w-2xl text-2xl font-medium leading-snug text-white md:text-3xl">
               But cancelling a licence cannot bring back the lives that were lost.
             </p>
           </Reveal>
-          <Reveal delay={150}><p className="mt-6 text-sm text-[#ffd9a8]/70">One light for each child.</p></Reveal>
         </section>
 
         {/* 6. how it works, in the dawn */}
-        <section className="mx-auto flex max-w-6xl flex-col justify-center px-6 py-24 text-white md:py-32">
+        <section className="mx-auto flex max-w-6xl flex-col justify-center px-6 py-16 text-white md:py-20">
           <Reveal><h2 className="h-display mx-auto max-w-4xl text-center text-4xl md:text-6xl">A medicine should heal, not harm.</h2></Reveal>
           <Reveal delay={200}>
             <p className="mx-auto mt-6 max-w-2xl text-center text-lg leading-relaxed text-white/90">
@@ -354,7 +349,7 @@ export default function NightToSunrise() {
               <b> That is why I built Medi-Flaw.</b>
             </p>
           </Reveal>
-          <Reveal delay={300}><h3 className="mt-14 text-center text-xl font-medium uppercase tracking-[0.2em] text-white/80">How it works</h3></Reveal>
+          <Reveal delay={300}><h3 className="mt-10 text-center text-xl font-medium uppercase tracking-[0.2em] text-white/80">How it works</h3></Reveal>
           <div className="mt-6 grid gap-5 md:grid-cols-3">
             {[
               ["1", "Save your medicines", "Scan the QR code on the strip, upload your purchase invoice (PDF), take a photo of it, or just type the batch number."],
@@ -379,9 +374,9 @@ export default function NightToSunrise() {
         </section>
 
         {/* 7. danger levels, sunrise */}
-        <section className="mx-auto flex max-w-6xl flex-col justify-center px-6 py-20 text-[#2b2320] md:py-24">
+        <section className="mx-auto flex max-w-6xl flex-col justify-center px-6 py-12 text-[#2b2320] md:py-16">
           <Reveal><h2 className="h-display text-center text-4xl md:text-5xl">What the danger levels mean</h2></Reveal>
-          <div className="mt-10 grid gap-5 md:grid-cols-3">
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
             {[
               ["HIGH", "bg-[#b42318]", "The most serious", "Fake medicine, a product that should be germ-free but is not (sterility), particles inside, or germs found. Also a wrong amount of medicine in an injection or eye drop. Stop using it and talk to your doctor today."],
               ["MEDIUM", "bg-[#b46a00]", "May not work as it should", "Wrong amount of medicine (too little or too much), the tablet does not dissolve properly, too many impurities, or a physical test failed (like pH or volume)."],
@@ -399,7 +394,7 @@ export default function NightToSunrise() {
         </section>
 
         {/* 8. day */}
-        <section className="relative flex min-h-[85svh] flex-col items-center justify-center overflow-hidden px-6 pb-24 text-center text-[#2b2320]">
+        <section className="relative flex min-h-[62svh] flex-col items-center justify-center overflow-hidden px-6 pb-24 text-center text-[#2b2320]">
           <img src="/landscape.svg" alt="" aria-hidden className="absolute inset-x-0 bottom-0 h-[75%] w-full object-cover opacity-90"
             style={{ maskImage: "linear-gradient(to bottom, transparent, black 35%)", WebkitMaskImage: "linear-gradient(to bottom, transparent, black 35%)" }} />
           <div className="relative">
@@ -419,21 +414,6 @@ export default function NightToSunrise() {
           </div>
         </section>
       </main>
-    </div>
-  );
-}
-
-function Candles({ count, label }: { count: number; label: string }) {
-  const [ref, seen] = useInView<HTMLDivElement>(0.3);
-  return (
-    <div ref={ref} className="mt-12">
-      <div className="mx-auto flex max-w-xl flex-wrap justify-center gap-3.5" aria-label={label}>
-        {Array.from({ length: count }).map((_, i) => (
-          <span key={i} className="mf-candle" style={{ opacity: 0, animationPlayState: seen ? "running" : "paused",
-            animationDelay: `${i * 70}ms, ${i * 70 + 800 + (i % 7) * 230}ms`, animationDuration: `0.8s, ${2.2 + (i % 5) * 0.35}s` }} />
-        ))}
-      </div>
-      <p className="mt-4 text-sm text-[#ffd9a8]/80">{label}</p>
     </div>
   );
 }
